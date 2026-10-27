@@ -117,7 +117,7 @@ import {
   shouldShowFileExplorer,
   workspaceAssetResource,
 } from "./filePreviewMode";
-import { useFileSaveCoordinator } from "./useFileSaveCoordinator";
+import { changeFileSaveSession, fileSaveSessionRef } from "./fileSaveSessions";
 import { revisionedQuery } from "~/state/revisionedQuery";
 import {
   getOptimisticProjectFileQueryData,
@@ -675,12 +675,7 @@ function EditableFileSurface({
   };
   const surfaceRef = useRef<HTMLDivElement>(null);
   const selectionFrameRef = useRef<number | null>(null);
-  const saveCoordinator = useFileSaveCoordinator({
-    environmentId,
-    cwd,
-    relativePath,
-    onPendingChange,
-  });
+  const saveTarget = { environmentId, cwd, relativePath };
   // Retain file identity for echoed editor changes; only external changes replace the editor's draft.
   const [externalFile, setExternalFile] = useState(() =>
     editableFileContents(environmentId, cwd, relativePath, contents),
@@ -709,7 +704,7 @@ function EditableFileSurface({
     if (file.contents === getProjectFileContents(environmentId, cwd, relativePath)) return;
     setEditedContents(file.contents);
     setProjectFileQueryData(environmentId, cwd, relativePath, file.contents);
-    saveCoordinator.change(file.contents);
+    changeFileSaveSession(saveTarget, file.contents);
     if (!nextLineAnnotations) return;
     const remapped = remapFileCommentAnnotations(nextLineAnnotations);
     // The editor hands back the array it was given until an edit moves an annotation.
@@ -852,53 +847,55 @@ function EditableFileSurface({
 
   return (
     <EditProvider createEditor={createFileEditor}>
-      <div ref={surfaceRef} className="flex min-h-0 flex-1">
-        <Virtualizer
-          className="file-preview-virtualizer min-h-0 flex-1 overflow-auto"
-          config={{
-            overscrollSize: 600,
-            intersectionObserverMargin: 1200,
-          }}
-        >
-          <File<FileCommentAnnotationGroup>
-            file={externalFile}
-            edit={editable}
-            editorOptions={editorOptions}
-            onEditChange={handleEditChange}
-            options={{
-              disableFileHeader: true,
-              enableGutterUtility: !hasOpenCommentForm,
-              enableLineSelection: !hasOpenCommentForm,
-              onGutterUtilityClick: setSelectedRange,
-              onLineSelectionChange: setSelectedRange,
-              onLineSelectionEnd: handleLineSelectionEnd,
-              overflow: wordWrap ? "wrap" : "scroll",
-              theme: resolveDiffThemeName(resolvedTheme),
-              preferredHighlighter: PREFERRED_HIGHLIGHTER,
-              themeType: resolvedTheme,
-              unsafeCSS: FILE_LINK_REVEAL_UNSAFE_CSS,
-              onPostRender: handlePostRender,
+      <div ref={fileSaveSessionRef(saveTarget, onPendingChange)} className="contents">
+        <div ref={surfaceRef} className="flex min-h-0 flex-1">
+          <Virtualizer
+            className="file-preview-virtualizer min-h-0 flex-1 overflow-auto"
+            config={{
+              overscrollSize: 600,
+              intersectionObserverMargin: 1200,
             }}
-            selectedLines={selectedRange}
-            lineAnnotations={lineAnnotations}
-            renderAnnotation={(annotation) => (
-              <div className="py-1">
-                {annotation.metadata.entries.map((entry) => (
-                  <DiffCommentAnnotation
-                    key={entry.id}
-                    kind={entry.kind}
-                    rangeLabel={formatFileCommentRange(entry.startLine, entry.endLine)}
-                    text={entry.text}
-                    onCancel={() => removeAnnotationEntry(entry.id)}
-                    onComment={(text) => submitAnnotationEntry(entry.id, text)}
-                    onDelete={() => removeAnnotationEntry(entry.id)}
-                  />
-                ))}
-              </div>
-            )}
-            className="min-h-full"
-          />
-        </Virtualizer>
+          >
+            <File<FileCommentAnnotationGroup>
+              file={externalFile}
+              edit={editable}
+              editorOptions={editorOptions}
+              onEditChange={handleEditChange}
+              options={{
+                disableFileHeader: true,
+                enableGutterUtility: !hasOpenCommentForm,
+                enableLineSelection: !hasOpenCommentForm,
+                onGutterUtilityClick: setSelectedRange,
+                onLineSelectionChange: setSelectedRange,
+                onLineSelectionEnd: handleLineSelectionEnd,
+                overflow: wordWrap ? "wrap" : "scroll",
+                theme: resolveDiffThemeName(resolvedTheme),
+                preferredHighlighter: PREFERRED_HIGHLIGHTER,
+                themeType: resolvedTheme,
+                unsafeCSS: FILE_LINK_REVEAL_UNSAFE_CSS,
+                onPostRender: handlePostRender,
+              }}
+              selectedLines={selectedRange}
+              lineAnnotations={lineAnnotations}
+              renderAnnotation={(annotation) => (
+                <div className="py-1">
+                  {annotation.metadata.entries.map((entry) => (
+                    <DiffCommentAnnotation
+                      key={entry.id}
+                      kind={entry.kind}
+                      rangeLabel={formatFileCommentRange(entry.startLine, entry.endLine)}
+                      text={entry.text}
+                      onCancel={() => removeAnnotationEntry(entry.id)}
+                      onComment={(text) => submitAnnotationEntry(entry.id, text)}
+                      onDelete={() => removeAnnotationEntry(entry.id)}
+                    />
+                  ))}
+                </div>
+              )}
+              className="min-h-full"
+            />
+          </Virtualizer>
+        </div>
       </div>
     </EditProvider>
   );
@@ -926,15 +923,10 @@ function RenderedMarkdownSurface({
   readOnly: boolean;
   workspaceMutationId: string | null;
 }) {
-  const saveCoordinator = useFileSaveCoordinator({
-    environmentId,
-    cwd,
-    relativePath,
-    onPendingChange,
-  });
+  const saveTarget = { environmentId, cwd, relativePath };
 
   return (
-    <ScrollArea className="min-h-0 flex-1">
+    <ScrollArea ref={fileSaveSessionRef(saveTarget, onPendingChange)} className="min-h-0 flex-1">
       <FileMarkdownPreview
         text={contents}
         cwd={cwd}
@@ -951,7 +943,7 @@ function RenderedMarkdownSurface({
                 const nextContents = setMarkdownTaskChecked(currentContents, markerOffset, checked);
                 if (nextContents === currentContents) return;
                 setProjectFileQueryData(environmentId, cwd, relativePath, nextContents);
-                saveCoordinator.change(nextContents);
+                changeFileSaveSession(saveTarget, nextContents);
               }
         }
       />
