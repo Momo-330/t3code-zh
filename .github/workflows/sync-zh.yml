@@ -116,9 +116,11 @@ jobs:
           # while main runs ahead), so a fresh base like "0.1.2-zh.1" could sort
           # below an already-published "0.1.3-zh.2" and never reach users.
           upstream_version=$(node -p "require('./apps/desktop/package.json').version")
-          latest=$(gh release list --limit 50 --json tagName,isDraft \
-            --jq '[.[] | select(.isDraft | not) | .tagName | select(startswith("zh-v"))] | first // ""' \
-            | sed 's/^zh-v//')
+          # List tags directly: parsing release JSON inside a shell heredoc is
+          # fragile, and every published release has a matching zh-v* tag.
+          latest=$(git ls-remote --tags --refs origin 'zh-v*' 2>/dev/null \
+            | sed 's#.*refs/tags/zh-v##' \
+            | sort -V | tail -1)
 
           if [[ -z "$latest" ]]; then
             value="${upstream_version}-zh.1"
