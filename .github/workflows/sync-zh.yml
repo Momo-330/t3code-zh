@@ -1,0 +1,113 @@
+name: Sync upstream and release
+
+# Daily check for upstream changes. When pingdotgg/t3code moves, this merges it
+# and publishes a new zh.N build so the app's "Check for updates" sees it.
+# A merge conflict fails the run instead of guessing: the fork only owns the
+# dictionary and the transform, everything else should take upstream verbatim.
+
+on:
+  schedule:
+    # 02:17 UTC daily; off the hour so it does not queue behind the busy slot.
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Build and release even when upstream has no new commits"
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: sync-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      changed: ${{ steps.merge.outputs.changed }}
+      version: ${{ steps.version.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/pingdotgg/t3code.git
+          git fetch upstream main --tags --depth=1
+
+      - name: Merge upstream
+        id: merge
+        run: |
+          behind=$(git rev-list --count HEAD..upstream/main)
+          echo "upstream commits behind: $behind"
+          if [[ "$behind" == "0" && "${{ inputs.force }}" != "true" ]]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if ! git merge upstream/main --no-edit -m "chore: sync upstream"; then
+            echo "::error::Merge conflict. Upstream touched files this fork edits."
+            git merge --abort || true
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Push the merge
+        if: steps.merge.outputs.changed == 'true'
+        run: git push origin HEAD:main
+
+      - name: Resolve the next version
+        id: version
+        run: |
+          # Base the number on upstream's package version, sequence on this fork.
+          base=$(node -p "require('./apps/desktop/package.json').version")
+          latest=$(gh release list --limit 20 --json tagName \
+            --jq '[.[] | .tagName | select(startswith("zh-v"))] | first // "zh-v0.0.0-zh.0"' \
+            | sed 's/^zh-v//')
+          seq=${latest##*-zh.}
+          if [[ "$latest" == "${base}-zh."* ]]; then
+            next=$((seq + 1))
+          else
+            next=1
+          fi
+          value="${base}-zh.${next}"
+          echo "value=$value" >> "$GITHUB_OUTPUT"
+          echo "releasing $value (previous: $latest)"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Report what needs translating
+        if: steps.merge.outputs.changed == 'true'
+        continue-on-error: true
+        run: |
+          # Lists untranslated strings in the job summary. The build still ships
+          # with English fallbacks, so a missing translation never blocks a sync.
+          npm install --silent >/dev/null 2>&1 || true
+          npm run t3:sync > sync-report.txt 2>&1 || true
+          {
+            echo "### Untranslated strings"
+            echo '```'
+            sed -n '/need a translation/,$p' sync-report.txt | head -200
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    needs: sync
+    if: needs.sync.outputs.changed == 'true'
+    uses: ./.github/workflows/release-zh-windows.yml
+    with:
+      version: ${{ needs.sync.outputs.version }}
+    secrets: inherit
