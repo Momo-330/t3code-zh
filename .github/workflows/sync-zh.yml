@@ -110,20 +110,33 @@ jobs:
         id: version
         if: steps.gate.outputs.publish == 'true'
         run: |
-          # Base the number on upstream's package version, sequence on this fork.
-          base=$(node -p "require('./apps/desktop/package.json').version")
-          latest=$(gh release list --limit 20 --json tagName \
-            --jq '[.[] | .tagName | select(startswith("zh-v"))] | first // "zh-v0.0.0-zh.0"' \
+          # Versions must only move forward: electron-updater refuses anything
+          # that is not greater than the installed build. Upstream's
+          # package.json version does not change per commit (it sits at 0.1.2
+          # while main runs ahead), so a fresh base like "0.1.2-zh.1" could sort
+          # below an already-published "0.1.3-zh.2" and never reach users.
+          upstream_version=$(node -p "require('./apps/desktop/package.json').version")
+          latest=$(gh release list --limit 50 --json tagName,isDraft \
+            --jq '[.[] | select(.isDraft | not) | .tagName | select(startswith("zh-v"))] | first // ""' \
             | sed 's/^zh-v//')
-          seq=${latest##*-zh.}
-          if [[ "$latest" == "${base}-zh."* ]]; then
-            next=$((seq + 1))
+
+          if [[ -z "$latest" ]]; then
+            value="${upstream_version}-zh.1"
           else
-            next=1
+            # Compare the numeric triple, then the fork sequence.
+            latest_base=${latest%-zh.*}
+            latest_seq=${latest##*-zh.}
+            highest=$(printf '%s\n%s\n' "$latest_base" "$upstream_version" | sort -V | tail -1)
+            if [[ "$highest" == "$latest_base" ]]; then
+              # Upstream has not moved past the published base; bump the sequence.
+              value="${latest_base}-zh.$((latest_seq + 1))"
+            else
+              # Upstream moved to a new base; restart the sequence on it.
+              value="${upstream_version}-zh.1"
+            fi
           fi
-          value="${base}-zh.${next}"
           echo "value=$value" >> "$GITHUB_OUTPUT"
-          echo "releasing $value (previous: $latest)"
+          echo "releasing $value (latest published: ${latest:-none}, upstream base: $upstream_version)"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
