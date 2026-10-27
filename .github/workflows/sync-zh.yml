@@ -77,12 +77,23 @@ jobs:
             exit 0
           fi
 
+          before=$(git rev-parse HEAD)
           if ! git merge upstream/main --no-edit -m "chore: sync upstream"; then
             echo "::error::Merge conflict. Upstream touched files this fork edits."
             git merge --abort || true
             echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 1
           fi
+
+          # GITHUB_TOKEN cannot push changes under .github/workflows, and one
+          # refused path rejects the whole push. Upstream's CI belongs to their
+          # release process (signing, EAS, nightly), not to this fork, so restore
+          # this branch's own workflow directory exactly as it was.
+          rm -rf .github/workflows
+          git checkout "$before" -- .github/workflows
+          git add -A .github/workflows
+          git diff --cached --quiet .github/workflows || git commit -q --amend --no-edit
+
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
       - name: Push the merge
