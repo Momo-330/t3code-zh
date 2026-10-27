@@ -83,7 +83,15 @@ jobs:
 
       - name: Push the merge
         if: steps.merge.outputs.changed == 'true'
-        run: git push origin HEAD:main
+        run: |
+          # A manual push can land between checkout and here. Rebase the merge
+          # commit onto whatever origin has now instead of failing outright.
+          if ! git push origin HEAD:main; then
+            echo "push rejected; retrying on top of origin/main"
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
+          fi
 
       - name: Decide whether to publish
         id: gate
