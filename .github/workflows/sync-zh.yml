@@ -1,18 +1,23 @@
 name: Sync upstream and release
 
-# Daily check for upstream changes. When pingdotgg/t3code moves, this merges it
-# and publishes a new zh.N build so the app's "Check for updates" sees it.
-# A merge conflict fails the run instead of guessing: the fork only owns the
-# dictionary and the transform, everything else should take upstream verbatim.
+# Keeps this fork within a few hours of pingdotgg/t3code, then publishes one
+# Chinese build per day so the app's "Check for updates" has something new.
+#
+# Upstream lands 100+ commits a day. Merging that often keeps conflicts small;
+# building that often would ship a 160 MB release every hour, so the build is
+# gated on RELEASE_HOUR and reuses the newest merge of the day.
+#
+# A merge conflict fails the run instead of guessing: this fork owns only the
+# dictionary and the transform, everything else takes upstream verbatim.
 
 on:
   schedule:
-    # 02:17 UTC daily; off the hour so it does not queue behind the busy slot.
-    - cron: "17 2 * * *"
+    # Every 4 hours, off the hour so the job does not queue behind the busiest slot.
+    - cron: "17 */4 * * *"
   workflow_dispatch:
     inputs:
       force:
-        description: "Build and release even when upstream has no new commits"
+        description: "Build and release even when nothing changed"
         required: false
         default: false
         type: boolean
@@ -24,12 +29,17 @@ concurrency:
 permissions:
   contents: write
 
+env:
+  # Only the 02:17 UTC run (10:17 Beijing) publishes; the others just merge.
+  RELEASE_HOUR: "2"
+
 jobs:
   sync:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
       changed: ${{ steps.merge.outputs.changed }}
+      publish: ${{ steps.gate.outputs.publish }}
       version: ${{ steps.version.outputs.value }}
       upstream-commit: ${{ steps.upstream.outputs.commit }}
       upstream-stable: ${{ steps.upstream.outputs.stable }}
@@ -75,8 +85,30 @@ jobs:
         if: steps.merge.outputs.changed == 'true'
         run: git push origin HEAD:main
 
+      - name: Decide whether to publish
+        id: gate
+        run: |
+          # Manual force always publishes. Scheduled runs publish only in
+          # RELEASE_HOUR so one merge a day becomes one release.
+          if [[ "${{ inputs.force }}" == "true" ]]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "${{ steps.merge.outputs.changed }}" != "true" ]]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          hour=$(date -u +%H | sed 's/^0//')
+          if [[ "$hour" == "$RELEASE_HOUR" ]]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Merged without publishing; the ${RELEASE_HOUR}:17 UTC run releases."
+          fi
+
       - name: Resolve the next version
         id: version
+        if: steps.gate.outputs.publish == 'true'
         run: |
           # Base the number on upstream's package version, sequence on this fork.
           base=$(node -p "require('./apps/desktop/package.json').version")
@@ -129,7 +161,7 @@ jobs:
 
   release:
     needs: sync
-    if: needs.sync.outputs.changed == 'true'
+    if: needs.sync.outputs.publish == 'true'
     uses: ./.github/workflows/release-zh-windows.yml
     with:
       version: ${{ needs.sync.outputs.version }}
