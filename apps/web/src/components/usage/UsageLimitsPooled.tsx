@@ -314,7 +314,7 @@ function RedeemableSegment({
       {/* The popover closed before the confirm, so progress and the outcome need a home outside it. */}
       {redeem.busy || redeem.status ? (
         <span role="status" className="col-span-full text-xs text-muted-foreground">
-          <AccountName account={props.account} className="font-medium text-foreground" />{" "}
+          <AccountName account={props.account} className="font-medium text-foreground" />
           {redeem.busy ? "Using reset credit…" : redeem.status}
         </span>
       ) : null}

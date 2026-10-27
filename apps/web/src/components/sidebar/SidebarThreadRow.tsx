@@ -1507,7 +1507,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                 <span className="shrink-0 font-mono">
                   <span className="text-diff-addition-foreground">
                     +{formatDiffCount(diff.insertions)}
-                  </span>{" "}
+                  </span>
                   <span className="text-diff-deletion-foreground">
                     −{formatDiffCount(diff.deletions)}
                   </span>

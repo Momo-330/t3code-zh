@@ -42,9 +42,15 @@ import { UsageLimitsPooled } from "./UsageLimitsPooled";
 import { PROVIDER_PRESENTATION } from "./usageProviders";
 
 const PACE: Record<LimitPace, { readonly label: string; readonly icon: typeof GaugeIcon }> = {
-  ahead: { label: "Ahead of pace: spending faster than the window elapses", icon: TrendingUpIcon },
+  ahead: {
+    label: "Ahead of pace: spending faster than the window elapses",
+    icon: TrendingUpIcon,
+  },
   on: { label: "On pace with the window", icon: GaugeIcon },
-  under: { label: "Under pace: headroom left for the rest of the window", icon: TrendingDownIcon },
+  under: {
+    label: "Under pace: headroom left for the rest of the window",
+    icon: TrendingDownIcon,
+  },
 };
 
 export function barColor(driver: ServerProvider["driver"]): string {

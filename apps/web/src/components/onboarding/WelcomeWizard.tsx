@@ -35,6 +35,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 import { TYPOGRAPHY_ADVANCED_STORAGE_KEY } from "../../appearanceFonts";
+import { t } from "../../i18n";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { hasCloudPublicConfig } from "../../cloud/publicConfig";
 import { PRIVACY_POLICY_URL } from "../../legalLinks";
@@ -105,7 +106,7 @@ const NO_ENVIRONMENTS: readonly EnvironmentId[] = [];
 
 const AGENT_ONBOARDING_THREAD_ID = ThreadId.make("onboarding-agent-setup");
 const ONBOARDING_STAGES = ["Connect", "Agents", "Projects"] as const;
-const SCAN_LIMIT_MESSAGE = "Scan limit reached. Some projects or conversations may be missing.";
+const SCAN_LIMIT_MESSAGE = t("Scan limit reached. Some projects or conversations may be missing.");
 
 export function WelcomeWizard({
   localAvailable,
@@ -188,7 +189,10 @@ export function WelcomeWizard({
         } else if (importedThreadCount > 0) {
           toastManager.add({
             type: "success",
-            title: `Imported ${importedThreadCount} ${importedThreadCount === 1 ? "thread" : "threads"}`,
+            title: t(
+              importedThreadCount === 1 ? "Imported {count} thread" : "Imported {count} threads",
+              { count: importedThreadCount },
+            ),
           });
         }
         return true;
@@ -334,7 +338,7 @@ function ConnectionStep({
         Connect your computers
       </h1>
       <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
-        Choose one or more computers. We’ll set up agents and projects on each.
+        Choose one or more computers. We'll set up agents and projects on each.
       </p>
       {directEnvironments.length > 0 ? (
         <fieldset className="mt-5 space-y-2">
@@ -425,14 +429,16 @@ function ConnectionStep({
       </div>
       {skippedLabels.length > 0 ? (
         <p className="mt-4 text-xs text-muted-foreground">
-          Not connected, so setup skips {skippedLabels.join(", ")}. You can set{" "}
-          {skippedLabels.length === 1 ? "it" : "them"} up later from Settings.
+          {t("Not connected, so setup skips {names}. You can set it up later from Settings.", {
+            names: skippedLabels.join(", "),
+          })}
         </p>
       ) : null}
       <div className="mt-6 flex flex-col-reverse gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <p className="min-w-0 text-xs leading-relaxed text-muted-foreground">
-          T3 Code collects anonymous usage data to help us improve it. To read more about how your
-          data is used and how to opt out, see our{" "}
+          {t(
+            "T3 Code collects anonymous usage data to help us improve it. To read more about how your data is used and how to opt out, see our",
+          )}
           <a
             className="underline underline-offset-2 hover:text-foreground"
             href={PRIVACY_POLICY_URL}
@@ -629,7 +635,7 @@ function PairingForm({
               Need a pairing link?
             </CollapsibleTrigger>
             <Button type="submit" disabled={isPairing || pairingUrl.trim().length === 0}>
-              {isPairing ? "Pairing..." : "Pair"}
+              {isPairing ? "Pairing" : "Pair"}
             </Button>
           </div>
           <CollapsiblePanel>
@@ -638,7 +644,8 @@ function PairingForm({
             </p>
             <CommandBlock command="npx t3 pair" className="mt-2" />
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              Start T3 Code first, or run <code className="font-mono">npx t3 serve</code>. Add{" "}
+              Start T3 Code first, or run
+              <code className="font-mono">npx t3 serve</code>.
               <code className="font-mono">--tailscale</code> to use your tailnet.
             </p>
           </CollapsiblePanel>
@@ -1113,8 +1120,8 @@ function AgentInstallTerminal({
             "This connection cannot control terminals."
           ) : setupState === "writeFailed" ? (
             <>
-              Run <code className="rounded bg-muted px-1 font-mono">{command}</code> in this
-              terminal.
+              {t("Run {command} in this terminal.", { command: "" })}
+              <code className="rounded bg-muted px-1 font-mono">{command}</code>
             </>
           ) : setupState === "ready" ? (
             "Review the command, then press Enter to run it."
@@ -1165,7 +1172,7 @@ function AgentInstallTerminal({
   );
 }
 
-const IMPORT_PERMISSION_MESSAGE = "This connection cannot import projects or thread history.";
+const IMPORT_PERMISSION_MESSAGE = t("This connection cannot import projects or thread history.");
 
 function ImportStep({
   scans,
@@ -1383,11 +1390,21 @@ function ImportStep({
     importedThreadCountRef.current = importedThreadCount;
     if (importedProjectsCount < selection.length) {
       if (importedThreadCount > 0 && skippedThreadCount > 0) {
-        importWarningRef.current = `Imported ${importedThreadCount} ${importedThreadCount === 1 ? "thread" : "threads"}. ${skippedThreadCount} ${skippedThreadCount === 1 ? "thread" : "threads"} could not be imported.`;
+        importWarningRef.current = `${t("Imported {count} threads", { count: importedThreadCount })} ${t(
+          skippedThreadCount === 1
+            ? "{count} thread could not be imported."
+            : "{count} threads could not be imported.",
+          { count: skippedThreadCount },
+        )}`;
       } else if (skippedThreadCount > 0) {
-        importWarningRef.current = `${skippedThreadCount} ${skippedThreadCount === 1 ? "thread could" : "threads could"} not be imported.`;
+        importWarningRef.current = t(
+          skippedThreadCount === 1
+            ? "{count} thread could not be imported."
+            : "{count} threads could not be imported.",
+          { count: skippedThreadCount },
+        );
       } else if (importedThreadCount > 0) {
-        importWarningRef.current = `Imported ${importedThreadCount} ${importedThreadCount === 1 ? "thread" : "threads"}. Some thread history could not be imported.`;
+        importWarningRef.current = `${t("Imported {count} threads", { count: importedThreadCount })} $Some thread history could not be imported.`;
       } else {
         importWarningRef.current = "Could not import thread history.";
       }
@@ -1417,12 +1434,17 @@ function ImportStep({
   return (
     <StepShell
       title="Import your projects"
-      description="Import projects and conversations from Claude Code and Codex on your selected computers."
+      description={t(
+        "Import projects and conversations from Claude Code and Codex on your selected computers.",
+      )}
     >
       {candidates.length > 0 ? (
         <div className="mt-5 flex items-center justify-between gap-3 text-xs text-muted-foreground">
           <span role="status">
-            {selected.length} of {candidates.length} selected
+            {t("{selected} of {total} selected", {
+              selected: selected.length,
+              total: candidates.length,
+            })}
           </span>
           <div className="flex items-center gap-1">
             <Button
@@ -1472,7 +1494,7 @@ function ImportStep({
                     role="alert"
                     className="flex items-center justify-between gap-3 text-sm text-muted-foreground"
                   >
-                    <span>Could not check projects. {scan.error}</span>
+                    <span>{t("Could not check projects. {error}", { error: scan.error })}</span>
                     <Button variant="ghost" size="sm" onClick={scan.refresh}>
                       Retry
                     </Button>
@@ -1510,8 +1532,10 @@ function ImportStep({
           onClick={() => void runImport(selected)}
         >
           {isImporting
-            ? "Importing…"
-            : `Import ${selected.length} ${selected.length === 1 ? "project" : "projects"}`}
+            ? "Importing"
+            : t(selected.length === 1 ? "Import {count} project" : "Import {count} projects", {
+                count: selected.length,
+              })}
         </Button>
       </div>
     </StepShell>

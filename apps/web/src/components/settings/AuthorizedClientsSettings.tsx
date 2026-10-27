@@ -308,7 +308,7 @@ const PairingLinkListRow = memo(function PairingLinkListRow({
             </p>
           ) : shareablePairingUrl === null ? (
             <p className="text-2xs text-muted-foreground/70">
-              Copy the token and pair from another client using this backend&apos;s reachable host.
+              Copy the token and pair from another client using this backend's reachable host.
             </p>
           ) : null}
         </div>

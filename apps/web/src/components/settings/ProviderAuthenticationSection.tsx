@@ -162,7 +162,7 @@ export function ProviderAuthenticationSection({
       description={
         signedIn && !active && provider.auth.email?.trim() ? (
           <span>
-            Signed in as{" "}
+            Signed in as
             <RedactedSensitiveText
               key={provider.auth.email}
               value={provider.auth.email}
@@ -326,8 +326,8 @@ export function ProviderAuthenticationSection({
         <>
           {interaction?.type === "deviceCode" ? (
             <p className="py-2 text-sm text-muted-foreground">
-              Enter code{" "}
-              <code className="select-all font-mono text-foreground">{interaction.userCode}</code>{" "}
+              Enter code
+              <code className="select-all font-mono text-foreground">{interaction.userCode}</code>
               in your browser.
             </p>
           ) : null}

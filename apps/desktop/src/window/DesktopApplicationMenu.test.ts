@@ -138,11 +138,11 @@ describe("DesktopApplicationMenu", () => {
       yield* configureMenu(selectedAction, applicationMenuTemplate);
 
       const template = yield* Deferred.await(applicationMenuTemplate);
-      const editMenu = template.find((item) => item.label === "Edit");
+      const editMenu = template.find((item) => item.label === "编辑");
       if (!Array.isArray(editMenu?.submenu)) {
         throw new Error("Expected Edit menu submenu to be an array.");
       }
-      const pasteAsTextItem = editMenu.submenu.find((item) => item.label === "Paste as Text");
+      const pasteAsTextItem = editMenu.submenu.find((item) => item.label === "粘贴为纯文本");
       if (typeof pasteAsTextItem?.click !== "function") {
         throw new Error("Expected Paste as Text menu item to have a click handler.");
       }
@@ -167,7 +167,7 @@ describe("DesktopApplicationMenu", () => {
       yield* configureMenu(selectedAction, applicationMenuTemplate, { platform: "darwin" });
 
       const template = yield* Deferred.await(applicationMenuTemplate);
-      const viewMenu = template.find((item) => item.label === "View");
+      const viewMenu = template.find((item) => item.label === "查看");
       assert.isDefined(viewMenu);
       if (!Array.isArray(viewMenu.submenu)) {
         throw new Error("Expected View menu submenu to be an array.");
@@ -208,11 +208,11 @@ describe("DesktopApplicationMenu", () => {
       yield* configureMenu(selectedAction, applicationMenuTemplate);
 
       const template = yield* Deferred.await(applicationMenuTemplate);
-      const viewMenu = template.find((item) => item.label === "View");
+      const viewMenu = template.find((item) => item.label === "查看");
       if (!Array.isArray(viewMenu?.submenu)) {
         throw new Error("Expected View menu submenu to be an array.");
       }
-      const reload = viewMenu.submenu.find((item) => item.label === "Reload");
+      const reload = viewMenu.submenu.find((item) => item.label === "重新加载");
       assert.equal(reload?.accelerator, "CmdOrCtrl+R");
       if (typeof reload?.click !== "function") {
         throw new Error("Expected Reload menu item to have a click handler.");

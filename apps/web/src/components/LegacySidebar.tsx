@@ -237,6 +237,7 @@ import {
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 import { useThreadRouteTarget } from "../hooks/useThreadRouteTarget";
 import { type SidebarRouteReveal, useActiveRowReveal } from "./sidebar/routeReveal";
+import { t } from "../i18n";
 const SIDEBAR_SORT_LABELS: Record<SidebarProjectSortOrder, string> = {
   updated_at: "Last user message",
   created_at: "Created at",
@@ -2172,7 +2173,12 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       const clicked = await api.contextMenu.show(
         [
           ...(thread.branch
-            ? [{ id: "new-thread-on-branch", label: `New thread on ${thread.branch}` }]
+            ? [
+                {
+                  id: "new-thread-on-branch",
+                  label: t("New thread on {branch}", { branch: thread.branch }),
+                },
+              ]
             : []),
           { id: "rename", label: "Rename thread", disabled: !canOperateThread },
           ...(appAtomRegistry.get(canShareWithGuestAtom(thread.environmentId))
@@ -2381,7 +2387,9 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
             }
           />
           <TooltipPopup side="top">
-            {newThreadShortcutLabel ? `New thread (${newThreadShortcutLabel})` : "New thread"}
+            {newThreadShortcutLabel
+              ? t("New thread ({shortcut})", { shortcut: newThreadShortcutLabel })
+              : "New thread"}
           </TooltipPopup>
         </Tooltip>
       </div>

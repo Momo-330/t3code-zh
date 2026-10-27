@@ -83,7 +83,7 @@ export function SourceControlAccountSettings({
   if (groups.length === 0) {
     return (
       <p className="text-xs text-muted-foreground">
-        Sign in with{" "}
+        Sign in with
         <code className="rounded bg-muted px-1 py-px text-2xs">{credentials.loginCommand}</code> on
         the server host, then rescan to choose accounts here.
       </p>

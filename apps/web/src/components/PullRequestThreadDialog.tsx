@@ -246,7 +246,7 @@ export function PullRequestThreadDialog({
                 <div className="min-w-0">
                   <p className="truncate font-medium text-sm">{resolvedPullRequest.title}</p>
                   <p className="truncate text-muted-foreground text-xs">
-                    #{resolvedPullRequest.number} · {resolvedPullRequest.headBranch} to{" "}
+                    #{resolvedPullRequest.number} · {resolvedPullRequest.headBranch} to
                     {resolvedPullRequest.baseBranch}
                   </p>
                 </div>

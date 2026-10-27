@@ -14,6 +14,7 @@ import {
 
 import { shortcutKeyFromEvent } from "../../keybindings";
 import { isMacPlatform } from "../../lib/utils";
+import { t } from "../../i18n";
 import { METRIC_OPTIONS, WINDOW_OPTIONS } from "../usage/usageShortcuts";
 
 // Rank every usage command; mixing rank and alphabetical comparisons makes order input-dependent.
@@ -364,16 +365,18 @@ export function commandLabel(command: KeybindingCommand): string {
   if (command === "thread.editQueuedMessage") return "Queue: Edit Last Queued Message";
   if (command === "thread.copyReference") return "Pull Request: Copy Link or Thread ID";
   const usageMetric = METRIC_OPTIONS.find((option) => option.command === command);
-  if (usageMetric) return `Usage: ${usageMetric.label}`;
+  if (usageMetric) return t(`Usage: ${usageMetric.label}`);
   const usagePeriod = WINDOW_OPTIONS.find((option) => option.command === command);
-  if (usagePeriod) return `Usage: Period: ${usagePeriod.label}`;
+  if (usagePeriod) return t(`Usage: Period: ${usagePeriod.label}`);
   if (command === "view.reopenClosed") return "Reopen Closed Tab";
   if (command === "preview.focusUrl") return "Preview: Focus URL";
   const raw = String(command);
   if (raw.startsWith("script.") && raw.endsWith(".run")) {
-    return `Run Script: ${titleCaseCommandSegment(raw.slice("script.".length, -".run".length))}`;
+    return t("Run Script: {name}", {
+      name: titleCaseCommandSegment(raw.slice("script.".length, -".run".length)),
+    });
   }
-  return raw.split(".").map(titleCaseCommandSegment).join(": ");
+  return t(raw.split(".").map(titleCaseCommandSegment).join(": "));
 }
 
 function titleCaseCommandSegment(segment: string): string {

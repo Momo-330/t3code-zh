@@ -16,6 +16,7 @@ import { deviceEnvironment, deviceHostProbeAtom, NO_DEVICE_PROBE_ATOM } from "~/
 import { useAtomCommand } from "~/state/use-atom-command";
 import { readEnvironmentScope, useEnvironmentScope } from "~/state/session";
 import { cn } from "~/lib/utils";
+import { t } from "~/i18n";
 
 const platformName = (platform: DevicePlatform) => (platform === "ios" ? "iOS" : "Android");
 
@@ -175,7 +176,7 @@ export function DeviceSetup(props: {
           <section className="space-y-3 text-sm">
             <h3 className="font-medium">Enable the device hub</h3>
             <div className="flex items-start justify-between gap-4">
-              <p className="text-muted-foreground">{deviceHubDescription}</p>
+              <p className="text-muted-foreground">{t(deviceHubDescription)}</p>
               <Switch
                 checked={enabled}
                 disabled={!canConfigure || busy || pending !== null}
@@ -216,7 +217,7 @@ export function DeviceSetup(props: {
           <section className="space-y-3 text-sm">
             <h3 className="font-medium">Allow agent control</h3>
             <div className="flex items-start justify-between gap-4">
-              <p className="text-muted-foreground">{agentDeviceDescription}</p>
+              <p className="text-muted-foreground">{t(agentDeviceDescription)}</p>
               <Switch
                 checked={props.state.agentAccessEnabled}
                 disabled={!canConfigure || !enabled || busy || pending !== null}

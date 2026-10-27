@@ -32,6 +32,7 @@ import { type ReactNode } from "react";
 import { formatRelativeTimeLabel } from "../timestampFormat";
 import { type Project, type SidebarThreadSummary, type Thread } from "../types";
 import { isSidebarSubagentThread } from "./Sidebar.logic";
+import { t } from "../i18n";
 
 export const RECENT_THREAD_LIMIT = 12;
 export const ITEM_ICON_CLASS = "size-4 text-icon-muted";
@@ -746,13 +747,43 @@ export function getCommandPaletteMode(input: {
   return input.isBrowsing ? "root-browse" : "root";
 }
 
+function localizePaletteCopy(value: ReactNode): ReactNode {
+  return typeof value === "string" ? t(value) : value;
+}
+
+function localizePaletteItem(
+  item: CommandPaletteActionItem | CommandPaletteSubmenuItem,
+): CommandPaletteActionItem | CommandPaletteSubmenuItem {
+  if (item.kind === "submenu") {
+    return {
+      ...item,
+      title: localizePaletteCopy(item.title),
+      description: localizePaletteCopy(item.description),
+      groups: item.groups.map((group) => ({
+        ...group,
+        label: t(group.label),
+        items: group.items.map(localizePaletteItem),
+      })),
+    };
+  }
+  return {
+    ...item,
+    title: localizePaletteCopy(item.title),
+    description: localizePaletteCopy(item.description),
+  };
+}
+
 export function buildRootGroups(input: {
   actionItems: ReadonlyArray<CommandPaletteActionItem | CommandPaletteSubmenuItem>;
   recentThreadItems: ReadonlyArray<CommandPaletteActionItem>;
 }): CommandPaletteGroup[] {
   const groups: CommandPaletteGroup[] = [];
   if (input.actionItems.length > 0) {
-    groups.push({ value: "actions", label: "Actions", items: input.actionItems });
+    groups.push({
+      value: "actions",
+      label: "Actions",
+      items: input.actionItems.map(localizePaletteItem),
+    });
   }
   if (input.recentThreadItems.length > 0) {
     groups.push({

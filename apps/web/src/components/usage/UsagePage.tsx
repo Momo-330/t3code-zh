@@ -105,6 +105,7 @@ import {
   saveUsagePagePreferences,
   type UsagePagePreferences,
 } from "./usagePagePreferences";
+import { t } from "../../i18n";
 
 function isUsageMetric(value: string | null | undefined): value is UsageMetric {
   return METRIC_OPTIONS.some((option) => option.value === value);
@@ -182,7 +183,7 @@ export function UsagePage() {
     const shortcut = shortcutLabelForCommand(keybindings, option.command, {
       context: { usagePageOpen: true },
     });
-    return shortcut ? `${option.label} (${shortcut})` : option.label;
+    return shortcut ? `${t(option.label)} (${shortcut})` : t(option.label);
   };
   const [windowSelection, setWindowSelection] = useState(() => ({
     days: preferences.windowDays,
@@ -406,7 +407,7 @@ export function UsagePage() {
         >
           {WINDOW_OPTIONS.map((option) => (
             <Toggle key={option.days} value={String(option.days)} title={shortcutTitle(option)}>
-              {option.label}
+              {t(option.label)}
             </Toggle>
           ))}
         </ToggleGroup>
@@ -421,7 +422,7 @@ export function UsagePage() {
         >
           {METRIC_OPTIONS.map((option) => (
             <Toggle key={option.value} value={option.value} title={shortcutTitle(option)}>
-              {option.label}
+              {t(option.label)}
             </Toggle>
           ))}
         </ToggleGroup>
@@ -449,7 +450,7 @@ export function UsagePage() {
             className={cn("w-auto min-w-0", showingLimits && "redesign:hidden")}
           >
             <SelectValue>
-              {WINDOW_OPTIONS.find((option) => option.days === windowDays)?.label}
+              {t(WINDOW_OPTIONS.find((option) => option.days === windowDays)?.label ?? "")}
             </SelectValue>
           </SelectTrigger>
           <SelectPopup align="end" alignItemWithTrigger={false}>
@@ -459,7 +460,7 @@ export function UsagePage() {
                 value={String(option.days)}
                 title={shortcutTitle(option)}
               >
-                {option.label}
+                {t(option.label)}
               </SelectItem>
             ))}
           </SelectPopup>
@@ -477,13 +478,13 @@ export function UsagePage() {
             className="w-auto min-w-0"
           >
             <SelectValue>
-              {METRIC_OPTIONS.find((option) => option.value === metric)?.label}
+              {t(METRIC_OPTIONS.find((option) => option.value === metric)?.label ?? "")}
             </SelectValue>
           </SelectTrigger>
           <SelectPopup align="end" alignItemWithTrigger={false}>
             {METRIC_OPTIONS.map((option) => (
               <SelectItem key={option.value} value={option.value} title={shortcutTitle(option)}>
-                {option.label}
+                {t(option.label)}
               </SelectItem>
             ))}
           </SelectPopup>
@@ -917,7 +918,7 @@ function UsageOverview({
               ] as const
             ).map((option) => (
               <Toggle key={option.value} value={option.value}>
-                {option.label}
+                {t(option.label)}
               </Toggle>
             ))}
           </ToggleGroup>
@@ -1285,7 +1286,7 @@ function UsageCoverageNotice({
       ))}
       {duplicateSources.length > 0 ? (
         <span>
-          Counted once across environments sharing a transcript directory:{" "}
+          Counted once across environments sharing a transcript directory:
           {duplicateSources.join(", ")}
         </span>
       ) : null}

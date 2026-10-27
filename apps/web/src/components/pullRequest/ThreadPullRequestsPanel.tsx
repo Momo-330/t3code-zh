@@ -476,7 +476,7 @@ function EnabledThreadPullRequestsPanel({ threadRef }: { threadRef: ScopedThread
             {openCount} open · {linkCount} linked
             {lastSynced ? (
               <>
-                {" · synced "}
+                · synced
                 <RelativeTime timestamp={lastSynced} />
               </>
             ) : null}

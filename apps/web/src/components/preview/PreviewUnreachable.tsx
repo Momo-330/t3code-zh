@@ -29,7 +29,7 @@ export function PreviewFileNotShown({
       <div className="mx-auto flex w-full max-w-xl flex-1 flex-col px-8 py-12 sm:py-16">
         <ErrorIcon className="mb-6 size-12 text-muted-foreground/70" />
         <h1 className="mb-3 text-2xl font-semibold leading-tight text-foreground">
-          This file can&rsquo;t be shown here
+          This file can’t be shown here
         </h1>
         <p className="text-sm leading-relaxed text-muted-foreground">
           <span className="font-semibold text-foreground">{fileName}</span> from {host} was
@@ -62,7 +62,7 @@ export function PreviewUnreachable({ url, code, description, onReload, move }: P
       <div className="mx-auto flex w-full max-w-xl flex-1 flex-col px-8 py-12 sm:py-16">
         <ErrorIcon className="mb-6 size-12 text-muted-foreground/70" />
         <h1 className="mb-3 text-2xl font-semibold leading-tight text-foreground">
-          This site can&rsquo;t be reached
+          This site can’t be reached
         </h1>
         <p className="text-sm leading-relaxed text-muted-foreground">
           <span className="font-semibold text-foreground">{host}</span>: {friendly}.
@@ -75,7 +75,7 @@ export function PreviewUnreachable({ url, code, description, onReload, move }: P
               <li>Checking your connection</li>
               <li>Confirming the dev server is running</li>
               {move ? (
-                <li>Opening it in the environment&rsquo;s browser, which reaches its network</li>
+                <li>Opening it in the environment’s browser, which reaches its network</li>
               ) : null}
               <li>Checking the proxy and the firewall</li>
             </ul>

@@ -516,7 +516,7 @@ function ConfiguredCloudLinkRow({ canManageRelay }: { readonly canManageRelay: b
       <span className="block text-destructive">
         {[reachability.reason, reachability.hint, `Fix: ${reachability.fix}`]
           .filter(Boolean)
-          .join(" ")}{" "}
+          .join(" ")}
         <a
           href={connectReachabilityHelpUrl(reachability.cause)}
           target="_blank"

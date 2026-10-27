@@ -13,7 +13,12 @@ import * as Schema from "effect/Schema";
 import { TYPOGRAPHY_ADVANCED_STORAGE_KEY } from "../../appearanceFonts";
 import { writeLocalStorageValue } from "../../hooks/useLocalStorage";
 import { commandLabel } from "./KeybindingsSettings.logic";
-import type { ResolvedSettingsScope } from "./settingsScope";
+import { t } from "../../i18n";
+import {
+  validateSettingsScopeSearch,
+  type ResolvedSettingsScope,
+  type SettingsScopeSearch,
+} from "./settingsScope";
 
 export type SettingsPath =
   | "/settings/projects"
@@ -1297,7 +1302,9 @@ export function searchSettings(
       const title = normalizeSearchText(item.title);
       const fields = [
         title,
+        normalizeSearchText(t(item.title)),
         normalizeSearchText(SETTINGS_SECTION_LABELS[item.to]),
+        normalizeSearchText(t(SETTINGS_SECTION_LABELS[item.to])),
         ...(item.searchTerms ?? []).map(normalizeSearchText),
       ];
       if (!queryTokens.every((token) => fields.some((field) => field.includes(token)))) return [];

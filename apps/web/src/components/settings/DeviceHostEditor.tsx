@@ -107,7 +107,7 @@ function DeviceHostEditorForm({
         <DialogDescription>
           {targets.length === 1
             ? `Connect from ${targets[0]?.label}.`
-            : `Connect from ${targets.length} selected environments.`}{" "}
+            : `Connect from ${targets.length} selected environments.`}
           Hosts on the same machine are skipped.
         </DialogDescription>
       </DialogHeader>

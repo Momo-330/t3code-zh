@@ -204,7 +204,7 @@ export function ThreadLineageWorkflowRow({
                         <SectionHeaderStatus>Failed</SectionHeaderStatus>
                       ) : null}
                       <span className="shrink-0 text-2xs font-normal tabular-nums">
-                        {phase.settledCount}/{phase.members.length}{" "}
+                        {phase.settledCount}/{phase.members.length}
                         {phase.members.length === 1 ? "agent" : "agents"}
                       </span>
                       <span className="shrink-0 text-2xs font-normal tabular-nums empty:hidden">

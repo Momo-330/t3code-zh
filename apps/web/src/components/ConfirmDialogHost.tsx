@@ -16,6 +16,7 @@ import {
   AlertDialogTitle,
 } from "./ui/alert-dialog";
 import { Button } from "./ui/button";
+import { t } from "../i18n";
 
 type ConfirmationCopy = {
   readonly title: string;
@@ -74,10 +75,10 @@ export function ConfirmDialogHost() {
     >
       <AlertDialogPopup>
         <AlertDialogHeader>
-          <AlertDialogTitle>{copy.title}</AlertDialogTitle>
+          <AlertDialogTitle>{t(copy.title)}</AlertDialogTitle>
           {copy.description ? (
             <AlertDialogDescription className="whitespace-pre-line">
-              {copy.description}
+              {t(copy.description)}
             </AlertDialogDescription>
           ) : null}
         </AlertDialogHeader>

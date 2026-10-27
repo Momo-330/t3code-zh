@@ -8,6 +8,7 @@ import type {
 import * as Schema from "effect/Schema";
 import { sanitizeNewRefName } from "@t3tools/shared/git";
 import { toSortableTimestamp } from "../lib/threadSort";
+import { t } from "../i18n";
 export {
   dedupeRemoteBranchesWithLocalMatches,
   deriveLocalBranchNameFromRemoteRef,
@@ -153,7 +154,9 @@ export function resolvePreviousWorktreeSeed(input: {
 }
 
 export function resolvePreviousWorktreeLabel(seed: PreviousWorktreeSeed): string {
-  return seed.branch ? `Previous worktree (${seed.branch})` : "Previous worktree";
+  return seed.branch
+    ? t("Previous worktree ({branch})", { branch: seed.branch })
+    : "Previous worktree";
 }
 
 export function resolveEffectiveEnvMode(input: {
@@ -220,8 +223,8 @@ export function resolveBranchTriggerLabel(input: {
   if (effectiveEnvMode === "worktree" && !activeWorktreePath) {
     // Only the server can determine a local branch's configured remote.
     return startFromOrigin && resolvedActiveBranchIsRemote === false
-      ? `From ${resolvedActiveBranch} (remote)`
-      : `From ${resolvedActiveBranch}`;
+      ? t("From {branch} (remote)", { branch: resolvedActiveBranch })
+      : t("From {branch}", { branch: resolvedActiveBranch });
   }
   return resolvedActiveBranch;
 }

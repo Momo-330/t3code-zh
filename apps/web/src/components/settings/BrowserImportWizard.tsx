@@ -191,14 +191,14 @@ function QuitStep({
       <DialogHeader>
         <DialogTitle>Quit {source.name} to import</DialogTitle>
         <DialogDescription>
-          {source.name} is open, so its cookies can&rsquo;t be read yet. Quit it, then continue.
+          {source.name} is open, so its cookies can’t be read yet. Quit it, then continue.
         </DialogDescription>
       </DialogHeader>
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button onClick={onRechecked}>I&rsquo;ve quit it</Button>
+        <Button onClick={onRechecked}>I’ve quit it</Button>
       </DialogFooter>
     </>
   );
@@ -260,7 +260,7 @@ function FullDiskAccessStep({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Let T3 Code read {source.name}&rsquo;s cookies</DialogTitle>
+        <DialogTitle>Let T3 Code read {source.name}’s cookies</DialogTitle>
         <DialogDescription>
           To import cookies from {source.name}, T3 Code needs Full Disk Access. Turn it on in System
           Settings, then come back to finish the import. You can revoke it again once the import is
@@ -563,7 +563,7 @@ function BlockedStep({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Couldn&rsquo;t import from {source.name}</DialogTitle>
+        <DialogTitle>Couldn’t import from {source.name}</DialogTitle>
         <DialogDescription>{BROWSER_IMPORT_FAILURE_COPY[reason]}</DialogDescription>
       </DialogHeader>
       <DialogFooter>

@@ -1,5 +1,6 @@
 import type { ContextMenuItem } from "@t3tools/contracts";
 import type { SnoozePreset } from "@t3tools/client-runtime/state/thread-settled";
+import { t } from "../i18n";
 
 export type ThreadActionMenuId =
   | "new-thread-on-branch"
@@ -113,7 +114,7 @@ export function buildThreadActionMenuItems(
       ? [
           {
             id: "new-thread-on-branch" as const,
-            label: `New thread on ${state.branch}`,
+            label: t("New thread on {branch}", { branch: state.branch }),
             icon: "message-square-plus",
           },
         ]
@@ -144,7 +145,7 @@ export function buildThreadActionMenuItems(
                 children: [
                   ...state.snoozePresets.map((preset) => ({
                     id: `snooze:${preset.id}` as const,
-                    label: `${preset.label} (${preset.whenLabel})`,
+                    label: `${t(preset.label)} (${preset.whenLabel})`,
                   })),
                   { id: "snooze:custom" as const, label: "Custom…", separatorBefore: true },
                 ],
@@ -172,7 +173,7 @@ export function buildThreadActionMenuItems(
             id: "filter-by-project" as const,
             label: state.projectFilter.isActive
               ? "Show all projects"
-              : `Filter by ${state.projectFilter.label}`,
+              : t("Filter by {project}", { project: state.projectFilter.label }),
             icon: "folder-tree",
           },
         ]

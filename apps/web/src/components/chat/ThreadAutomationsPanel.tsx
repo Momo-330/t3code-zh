@@ -43,7 +43,7 @@ function taskScheduleLine(task: ScheduledTask) {
       {scheduleLabel(task.schedule)}
       {task.enabled && task.nextRunAt !== null ? (
         <>
-          {" · next "}
+          · next
           <ScheduledRelativeLabel value={task.nextRunAt} />
         </>
       ) : task.enabled ? (

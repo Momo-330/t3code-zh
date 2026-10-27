@@ -20,6 +20,7 @@ import {
 
 import { loadRepoEnv } from "../../scripts/lib/public-config";
 import { thirdPartyLicensesPlugin } from "../../scripts/lib/third-party-licenses";
+import { localizeI18nPlugin } from "./vite/localizeI18nPlugin";
 import { tailwindPlugins } from "./vite/tailwind";
 import { warmBundledDevPlugin } from "./vite/warmBundledDev";
 
@@ -265,6 +266,8 @@ export default defineConfig(() => {
     },
     assetsInclude: ["**/*.wasm"],
     plugins: [
+      // Must run before react() so the added t() calls see the JSX transform.
+      localizeI18nPlugin(),
       devCompressionPlugin(),
       chunkCycleGuardPlugin(),
       builtDev

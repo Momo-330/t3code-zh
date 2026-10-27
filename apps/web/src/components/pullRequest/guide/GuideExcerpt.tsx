@@ -357,7 +357,7 @@ function ExcerptDiff({
         renderHeaderMetadata={() => (
           <span className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="tabular-nums">
-              {excerpt.side === "old" ? "removed code, " : ""}showing {slice.shown} of {slice.total}{" "}
+              {excerpt.side === "old" ? "removed code, " : ""}showing {slice.shown} of {slice.total}
               diff lines
             </span>
             <Button

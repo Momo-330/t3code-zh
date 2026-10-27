@@ -173,7 +173,7 @@ function TelemetryExportForm() {
         </p>
         {!canEdit && (
           <p className="text-xs text-muted-foreground">
-            This connection lacks permission to change settings on{" "}
+            This connection lacks permission to change settings on
             {environment?.label ?? "the selected environment"}.
           </p>
         )}
@@ -235,7 +235,6 @@ function TelemetryExportForm() {
                   Running: {running?.[key] || "Disabled"}
                   {override?.variable && (
                     <>
-                      {" "}
                       from <code className="font-mono">{override.variable}</code>
                     </>
                   )}

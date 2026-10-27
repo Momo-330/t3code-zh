@@ -23,6 +23,7 @@ import {
 import { Children, type CSSProperties, isValidElement, type ReactNode, useState } from "react";
 
 import { cn } from "~/lib/utils";
+import { t } from "~/i18n";
 
 import { Badge } from "../ui/badge";
 import { InlineButton } from "../ui/button";
@@ -125,7 +126,9 @@ function resolvePullRequestConflict(input: {
     return null;
   }
   return {
-    label: input.baseBranch ? `Conflicts with ${input.baseBranch}` : "Has conflicts",
+    label: input.baseBranch
+      ? t("Conflicts with {branch}", { branch: input.baseBranch })
+      : "Has conflicts",
     toneClassName: "text-destructive",
     Icon: PullRequestGlyph.conflicting,
   };
@@ -324,7 +327,9 @@ export function pullRequestReviewOutcomeRingClassName(
 }
 
 export function pullRequestReviewOutcomeStaleLabel(outcome: PullRequestReviewOutcome): string {
-  return `${REVIEW_OUTCOME_PRESENTATION[outcome].label} earlier changes`;
+  return t("{label} earlier changes", {
+    label: REVIEW_OUTCOME_PRESENTATION[outcome].label,
+  });
 }
 
 export function PullRequestReviewOutcomeIcon({
@@ -514,16 +519,21 @@ export function summarizePullRequestChecks(checks: ReadonlyArray<PullRequestChec
   ).length;
   const pending = checks.filter((check) => check.status === "pending").length;
   const passed = checks.filter((check) => check.status === "success").length;
-  if (failed > 0) return `${failed} of ${checks.length} failing`;
+  if (failed > 0) return t("{failed} of {total} failing", { failed, total: checks.length });
   if (workflowApprovalRequired > 0 && otherActionRequired > 0) {
-    return `${workflowApprovalRequired} ${workflowApprovalRequired === 1 ? "workflow" : "workflows"} and ${otherActionRequired} ${otherActionRequired === 1 ? "check" : "checks"} awaiting action`;
+    return t("{workflows} workflows and {checks} checks awaiting action", {
+      workflows: workflowApprovalRequired,
+      checks: otherActionRequired,
+    });
   }
   if (workflowApprovalRequired > 0) {
-    return `${workflowApprovalRequired} ${workflowApprovalRequired === 1 ? "workflow" : "workflows"} awaiting approval`;
+    return t("{n} workflows awaiting approval", { n: workflowApprovalRequired });
   }
   if (otherActionRequired > 0) {
-    return `${otherActionRequired} ${otherActionRequired === 1 ? "check" : "checks"} awaiting action`;
+    return t("{n} checks awaiting action", { n: otherActionRequired });
   }
-  if (pending > 0) return `${pending} of ${checks.length} running`;
-  return passed === checks.length ? "All checks passed" : `${passed} of ${checks.length} passing`;
+  if (pending > 0) return t("{pending} of {total} running", { pending, total: checks.length });
+  return passed === checks.length
+    ? "All checks passed"
+    : t("{passed} of {total} passing", { passed, total: checks.length });
 }

@@ -1345,9 +1345,7 @@ function BrowserProfilesSetting({ disabled }: { readonly disabled: boolean }) {
             >
               Blank profile
             </MenuItem>
-            {atProfileLimit ? (
-              <MenuItem disabled>You&rsquo;ve reached the profile limit</MenuItem>
-            ) : null}
+            {atProfileLimit ? <MenuItem disabled>You’ve reached the profile limit</MenuItem> : null}
             <MenuSeparator />
             <MenuGroup>
               <MenuGroupLabel>Import from</MenuGroupLabel>

@@ -560,7 +560,7 @@ function DeviceHostList({
                           retryHost(result.environmentId, result.host.id, result.environmentId)
                         }
                       >
-                        {retrying === result.environmentId ? "Retrying" : "Retry"} from{" "}
+                        {retrying === result.environmentId ? "Retrying" : "Retry"} from
                         {result.label}
                         {result.address ? ` (${result.address})` : null}
                       </MenuItem>

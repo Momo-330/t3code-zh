@@ -9,6 +9,7 @@ import {
   supportsServerUpdateThreadContinuation,
 } from "~/versionSkew";
 import type { ServerUpdateOutcome, ServerUpdateTarget } from "../ServerUpdateAction";
+import { t } from "../../i18n";
 
 export interface UpdateEverythingMachine {
   readonly environmentId: EnvironmentId;
@@ -236,7 +237,7 @@ export function describeUpdateCapsule(
 ): UpdateCapsuleView {
   if (run.phase === "countdown" && run.restartAt !== null) {
     const seconds = Math.max(0, Math.ceil((run.restartAt - now) / 1000));
-    return { tone: "default", label: `Restart in ${seconds}s`, action: "later" };
+    return { tone: "default", label: t("Restart in {seconds}s", { seconds }), action: "later" };
   }
   if (run.phase === "installing") {
     return { tone: "default", label: "Restarting…", action: null };
@@ -256,12 +257,19 @@ export function describeUpdateCapsule(
   }
   const done = machines.filter(({ status }) => status === "done").length;
   if (machines.some(({ status }) => isActive(status))) {
-    return { tone: "default", label: `${done} of ${machines.length} updated`, action: null };
+    return {
+      tone: "default",
+      label: t("{done} of {total} updated", { done, total: machines.length }),
+      action: null,
+    };
   }
   if (local?.status === "downloading") {
     return {
       tone: "default",
-      label: `Downloading${local.percent === null ? "" : ` ${Math.floor(local.percent)}%`}`,
+      label:
+        local.percent === null
+          ? "Downloading"
+          : t("Downloading {percent}%", { percent: Math.floor(local.percent) }),
       action: null,
     };
   }
@@ -269,11 +277,18 @@ export function describeUpdateCapsule(
   if (failed.length > 0) {
     return {
       tone: "failed",
-      label: failed.length === 1 ? `${failed[0]!.machine.label} failed` : `${failed.length} failed`,
+      label:
+        failed.length === 1
+          ? t("{name} failed", { name: failed[0]!.machine.label })
+          : t("{n} failed", { n: failed.length }),
       action: failed.some(({ machine }) => machine.server !== null) ? "retry" : "dismiss",
     };
   }
-  return { tone: "default", label: `${done} of ${machines.length} updated`, action: null };
+  return {
+    tone: "default",
+    label: t("{done} of {total} updated", { done, total: machines.length }),
+    action: null,
+  };
 }
 
 export const RUN_STATUS_LABELS: Record<UpdateRunMachineStatus, string> = {

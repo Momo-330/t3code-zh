@@ -217,7 +217,7 @@ export function PullRequestStackMenu({
             }
           />
           <TooltipPopup>
-            Merge stack through #{reference.number} into {stack.base} ({mergeLayers.length}{" "}
+            Merge stack through #{reference.number} into {stack.base} ({mergeLayers.length}
             {mergeLayers.length === 1 ? terminology.singular : terminology.plural})
           </TooltipPopup>
         </Tooltip>

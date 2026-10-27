@@ -12,6 +12,7 @@ import * as ElectronMenu from "../electron/ElectronMenu.ts";
 import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
 import * as DesktopUpdates from "../updates/DesktopUpdates.ts";
 import * as DesktopWindow from "./DesktopWindow.ts";
+import { menuLabel } from "../i18n.ts";
 
 export class DesktopApplicationMenuActionError extends Schema.TaggedError<DesktopApplicationMenuActionError>()(
   "DesktopApplicationMenuActionError",
@@ -73,17 +74,20 @@ const checkForUpdatesFromMenu = Effect.gen(function* () {
   if (updateState.status === "up-to-date") {
     yield* electronDialog.showMessageBox({
       type: "info",
-      title: "You're up to date!",
-      message: `T3 Code ${updateState.currentVersion} is currently the newest version available.`,
-      buttons: ["OK"],
+      title: menuLabel("You're up to date!"),
+      message: menuLabel("T3 Code {version} is currently the newest version available.", {
+        version: updateState.currentVersion,
+      }),
+      buttons: [menuLabel("OK")],
     });
   } else if (updateState.status === "error") {
     yield* electronDialog.showMessageBox({
       type: "warning",
-      title: "Update check failed",
-      message: "Could not check for updates.",
-      detail: updateState.message ?? "An unknown error occurred. Please try again later.",
-      buttons: ["OK"],
+      title: menuLabel("Update check failed"),
+      message: menuLabel("Could not check for updates."),
+      detail:
+        updateState.message ?? menuLabel("An unknown error occurred. Please try again later."),
+      buttons: [menuLabel("OK")],
     });
   }
 }).pipe(Effect.withSpan("desktop.menu.checkForUpdates"));
@@ -98,10 +102,10 @@ const handleCheckForUpdatesMenuClick = Effect.gen(function* () {
     });
     yield* electronDialog.showMessageBox({
       type: "info",
-      title: "Updates unavailable",
-      message: "Automatic updates are not available right now.",
+      title: menuLabel("Updates unavailable"),
+      message: menuLabel("Automatic updates are not available right now."),
       detail: disabledReason.value,
-      buttons: ["OK"],
+      buttons: [menuLabel("OK")],
     });
     return;
   }
@@ -163,94 +167,114 @@ export const make = Effect.gen(function* () {
       template.push({
         label: environment.displayName,
         submenu: [
-          { role: "about", label: `About ${environment.displayName}` },
           {
-            label: "Check for Updates...",
+            role: "about",
+            label: menuLabel("About {name}", { name: environment.displayName }),
+          },
+          {
+            label: menuLabel("Check for Updates..."),
             click: checkForUpdatesClick,
           },
           { type: "separator" },
           {
-            label: "Settings...",
+            label: menuLabel("Settings..."),
             accelerator: "CmdOrCtrl+,",
             click: settingsClick,
           },
           { type: "separator" },
-          { role: "services" },
+          { role: "services", label: menuLabel("Services") },
           { type: "separator" },
-          { role: "hide", label: `Hide ${environment.displayName}` },
-          { role: "hideOthers" },
-          { role: "unhide" },
+          { role: "hide", label: menuLabel("Hide {name}", { name: environment.displayName }) },
+          { role: "hideOthers", label: menuLabel("Hide Others") },
+          { role: "unhide", label: menuLabel("Show All") },
           { type: "separator" },
-          { role: "quit", label: `Quit ${environment.displayName}` },
+          { role: "quit", label: menuLabel("Quit {name}", { name: environment.displayName }) },
         ],
       });
     }
 
     template.push(
       {
-        label: "File",
+        label: menuLabel("File"),
         submenu: [
           ...(environment.platform === "darwin"
             ? []
             : [
                 {
-                  label: "Settings...",
+                  label: menuLabel("Settings..."),
                   accelerator: "CmdOrCtrl+,",
                   click: settingsClick,
                 },
                 { type: "separator" as const },
               ]),
-          { role: environment.platform === "darwin" ? "close" : "quit" },
+          {
+            role: environment.platform === "darwin" ? "close" : "quit",
+            label:
+              environment.platform === "darwin"
+                ? menuLabel("Close")
+                : menuLabel("Quit {name}", { name: environment.displayName }),
+          },
         ],
       },
       {
-        label: "Edit",
+        label: menuLabel("Edit"),
         submenu: [
-          { role: "undo" },
-          { role: "redo" },
+          { role: "undo", label: menuLabel("Undo") },
+          { role: "redo", label: menuLabel("Redo") },
           { type: "separator" },
-          { role: "cut" },
-          { role: "copy" },
-          { role: "paste" },
+          { role: "cut", label: menuLabel("Cut") },
+          { role: "copy", label: menuLabel("Copy") },
+          { role: "paste", label: menuLabel("Paste") },
           {
-            label: "Paste as Text",
+            label: menuLabel("Paste as Text"),
             accelerator: "CmdOrCtrl+Shift+V",
             click: pasteAsTextClick,
           },
-          { role: "delete" },
+          { role: "delete", label: menuLabel("Delete") },
           { type: "separator" },
-          { role: "selectAll" },
+          { role: "selectAll", label: menuLabel("Select All") },
           ...(environment.platform === "darwin"
             ? [
                 { type: "separator" as const },
                 {
-                  label: "Speech",
-                  submenu: [{ role: "startSpeaking" as const }, { role: "stopSpeaking" as const }],
+                  label: menuLabel("Speech"),
+                  submenu: [
+                    { role: "startSpeaking" as const, label: menuLabel("Start Speaking") },
+                    { role: "stopSpeaking" as const, label: menuLabel("Stop Speaking") },
+                  ],
                 },
               ]
             : []),
         ],
       },
       {
-        label: "View",
+        label: menuLabel("View"),
         submenu: [
           /* Native reload/DevTools/zoom roles target focused guests; these commands must target the app. */
-          { label: "Reload", accelerator: "CmdOrCtrl+R", click: mainContentsClick("reload") },
           {
-            label: "Force Reload",
+            label: menuLabel("Reload"),
+            accelerator: "CmdOrCtrl+R",
+            click: mainContentsClick("reload"),
+          },
+          {
+            label: menuLabel("Force Reload"),
             accelerator: "Shift+CmdOrCtrl+R",
             click: mainContentsClick("forceReload"),
           },
           {
-            label: "Toggle Developer Tools",
+            label: menuLabel("Toggle Developer Tools"),
             accelerator: environment.platform === "darwin" ? "Alt+Command+I" : "Ctrl+Shift+I",
             click: mainContentsClick("toggleDevTools"),
           },
           { type: "separator" },
-          { label: "Actual Size", accelerator: "CmdOrCtrl+0", click: zoomClick("reset") },
-          { label: "Zoom In", accelerator: "CmdOrCtrl+=", click: zoomClick("in") },
           {
-            label: "Zoom In",
+            label: menuLabel("Actual Size"),
+            accelerator: "CmdOrCtrl+0",
+            click: zoomClick("reset"),
+          },
+          { label: menuLabel("Zoom In"), accelerator: "CmdOrCtrl+=", click: zoomClick("in") },
+          {
+            label: menuLabel("Zoom In"),
             accelerator: "CmdOrCtrl+Plus",
             visible: false,
             click: zoomClick("in"),
@@ -258,43 +282,44 @@ export const make = Effect.gen(function* () {
           ...(environment.platform === "darwin"
             ? [
                 {
-                  label: "Zoom In",
+                  label: menuLabel("Zoom In"),
                   accelerator: "CmdOrCtrl+Shift+=",
                   visible: false,
                   click: zoomClick("in"),
                 },
               ]
             : []),
-          { label: "Zoom Out", accelerator: "CmdOrCtrl+-", click: zoomClick("out") },
+          { label: menuLabel("Zoom Out"), accelerator: "CmdOrCtrl+-", click: zoomClick("out") },
           // Keypad codes do not match number-row accelerators.
           {
-            label: "Actual Size",
+            label: menuLabel("Actual Size"),
             accelerator: "CmdOrCtrl+num0",
             visible: false,
             click: zoomClick("reset"),
           },
           {
-            label: "Zoom In",
+            label: menuLabel("Zoom In"),
             accelerator: "CmdOrCtrl+numadd",
             visible: false,
             click: zoomClick("in"),
           },
           {
-            label: "Zoom Out",
+            label: menuLabel("Zoom Out"),
             accelerator: "CmdOrCtrl+numsub",
             visible: false,
             click: zoomClick("out"),
           },
           { type: "separator" },
-          { role: "togglefullscreen" },
+          { role: "togglefullscreen", label: menuLabel("Toggle Full Screen") },
         ],
       },
-      { role: "windowMenu" },
+      { role: "windowMenu", label: menuLabel("Window") },
       {
         role: "help",
+        label: menuLabel("Help"),
         submenu: [
           {
-            label: "Check for Updates...",
+            label: menuLabel("Check for Updates..."),
             click: checkForUpdatesClick,
           },
         ],

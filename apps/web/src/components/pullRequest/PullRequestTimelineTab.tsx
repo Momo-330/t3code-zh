@@ -331,7 +331,7 @@ function ConversationGroup({
                 {events.length.toLocaleString()} {events.length === 1 ? "comment" : "comments"}
               </span>
               <span className="block truncate text-3xs text-muted-foreground">
-                {actors.length.toLocaleString()} {actors.length === 1 ? "author" : "authors"} ·{" "}
+                {actors.length.toLocaleString()} {actors.length === 1 ? "author" : "authors"} ·
                 <RelativeTime timestamp={first.at} />
               </span>
             </span>
@@ -416,7 +416,6 @@ function ReviewThreadEvent({
             · {event.actor?.login ?? "ghost"}
             {replyCount > 0 ? (
               <>
-                {" "}
                 · {replyCount.toLocaleString()} {replyCount === 1 ? "reply" : "replies"}
               </>
             ) : null}

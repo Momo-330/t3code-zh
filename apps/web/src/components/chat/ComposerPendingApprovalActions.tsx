@@ -9,6 +9,7 @@ import { Button } from "../ui/button";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "../ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { composerFloatingLayerProps } from "./composerEventScope";
+import { t } from "../../i18n";
 
 interface ComposerPendingApprovalActionsProps {
   requestId: RuntimeRequestId;
@@ -61,7 +62,7 @@ export const ComposerPendingApprovalActions = memo(function ComposerPendingAppro
             }}
           >
             {option.warning ? <TriangleAlertIcon className="size-3 shrink-0" /> : null}
-            <span className="max-w-40 truncate">{option.label}</span>
+            <span className="max-w-40 truncate">{t(option.label)}</span>
           </Button>
         );
         return option.warning ? (
@@ -94,7 +95,9 @@ export const ComposerPendingApprovalActions = memo(function ComposerPendingAppro
                   }}
                 >
                   {option.warning ? <TriangleAlertIcon className="size-3 text-warning" /> : null}
-                  <span className="min-w-0 whitespace-normal wrap-break-word">{option.label}</span>
+                  <span className="min-w-0 whitespace-normal wrap-break-word">
+                    {t(option.label)}
+                  </span>
                 </MenuItem>
               );
               return option.warning ? (

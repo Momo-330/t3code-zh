@@ -19,6 +19,7 @@ import { getDesktopUrl } from "../electron/ElectronProtocol.ts";
 import * as ElectronShell from "../electron/ElectronShell.ts";
 import * as ElectronTheme from "../electron/ElectronTheme.ts";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
+import { menuLabel } from "../i18n.ts";
 import {
   MENU_ACTION_CHANNEL,
   QUIT_SHORTCUT_CHANNEL,
@@ -541,7 +542,7 @@ export const make = Effect.gen(function* () {
             });
           }
           if (params.dictionarySuggestions.length === 0) {
-            menuTemplate.push({ label: "No suggestions", enabled: false });
+            menuTemplate.push({ label: menuLabel("No suggestions"), enabled: false });
           }
           menuTemplate.push({ type: "separator" });
         }
@@ -549,7 +550,7 @@ export const make = Effect.gen(function* () {
         if (Option.isSome(ElectronShell.parseSafeExternalUrl(params.linkURL))) {
           menuTemplate.push(
             {
-              label: "Copy Link",
+              label: menuLabel("Copy Link"),
               click: () => {
                 void runPromise(electronShell.copyText(params.linkURL));
               },
@@ -560,7 +561,7 @@ export const make = Effect.gen(function* () {
 
         if (params.mediaType === "image") {
           menuTemplate.push({
-            label: "Copy Image",
+            label: menuLabel("Copy Image"),
             click: () => {
               void runPromise(
                 Effect.tryPromise(() => copyContextMenuImage(contents, params)).pipe(
@@ -573,10 +574,14 @@ export const make = Effect.gen(function* () {
         }
 
         menuTemplate.push(
-          { role: "cut", enabled: params.editFlags.canCut },
-          { role: "copy", enabled: params.editFlags.canCopy },
-          { role: "paste", enabled: params.editFlags.canPaste },
-          { role: "selectAll", enabled: params.editFlags.canSelectAll },
+          { role: "cut", label: menuLabel("Cut"), enabled: params.editFlags.canCut },
+          { role: "copy", label: menuLabel("Copy"), enabled: params.editFlags.canCopy },
+          { role: "paste", label: menuLabel("Paste"), enabled: params.editFlags.canPaste },
+          {
+            role: "selectAll",
+            label: menuLabel("Select All"),
+            enabled: params.editFlags.canSelectAll,
+          },
         );
 
         void runPromise(

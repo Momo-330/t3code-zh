@@ -298,7 +298,7 @@ export function CaptureShortcutConfig({
             ) : null}
           </div>
           <p>
-            Use your desktop's shortcut settings file.{" "}
+            Use your desktop's shortcut settings file.
             {niri
               ? "A custom --config or NIRI_CONFIG can change its location."
               : "On Omarchy, use your own bindings file, not its defaults."}
@@ -308,7 +308,7 @@ export function CaptureShortcutConfig({
           <p>
             {niri
               ? "Paste this inside binds { … } in your Niri config, then save."
-              : "Add this binding to your Hyprland config, then save."}{" "}
+              : "Add this binding to your Hyprland config, then save."}
             Change the keys if needed.
           </p>
           <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-xl bg-muted/50 p-3">

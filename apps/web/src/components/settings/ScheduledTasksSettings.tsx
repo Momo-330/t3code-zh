@@ -730,7 +730,7 @@ function ScheduledTaskRow({
       status={
         <div className="flex flex-wrap items-center gap-2">
           <span>
-            {scheduleLabel(task.schedule)} ·{" "}
+            {scheduleLabel(task.schedule)} ·
             {!task.enabled ? (
               "Paused"
             ) : isWebhook ? (

@@ -169,7 +169,7 @@ export function ConnectAgentSurface() {
         title={`Connect ${details.clientName}`}
         description={
           <>
-            This agent wants to use the threads in every project on{" "}
+            This agent wants to use the threads in every project on
             <span className="font-medium text-foreground">{details.environmentHost}</span>.
           </>
         }
@@ -182,7 +182,7 @@ export function ConnectAgentSurface() {
           </>
         ) : (
           <>
-            The name is chosen by the agent. Approval gives access to whoever runs{" "}
+            The name is chosen by the agent. Approval gives access to whoever runs
             <span className="font-medium text-foreground">{details.redirectHost}</span>. Only
             approve a sign-in you just started there.
           </>

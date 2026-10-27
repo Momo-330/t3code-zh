@@ -116,7 +116,7 @@ export function CodexSetupSection(props: CodexSetupSectionProps) {
           existingReady ? (
             props.provider?.auth.email?.trim() ? (
               <>
-                Signed in as{" "}
+                Signed in as
                 <RedactedSensitiveText
                   value={props.provider.auth.email.trim()}
                   ariaLabel="Toggle account email visibility"
@@ -607,7 +607,7 @@ function ManagedCodexSetup({
   ) : authenticated ? (
     provider?.auth.email?.trim() ? (
       <>
-        Signed in as{" "}
+        Signed in as
         <RedactedSensitiveText
           value={provider.auth.email.trim()}
           ariaLabel="Toggle account email visibility"
@@ -791,7 +791,7 @@ function ManagedCodexSetup({
             ) : authenticated ? (
               provider?.auth.email?.trim() ? (
                 <>
-                  Signed in as{" "}
+                  Signed in as
                   <RedactedSensitiveText
                     value={provider.auth.email.trim()}
                     ariaLabel="Toggle account email visibility"

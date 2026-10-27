@@ -236,7 +236,7 @@ function ModelPickerProviderNotices({
           key={instanceId}
           className="shrink-0 border-t border-border/70 px-3 py-2 text-xs leading-snug text-muted-foreground"
         >
-          {notice}{" "}
+          {notice}
           <InlineButton
             onClick={() => {
               onRequestClose?.();

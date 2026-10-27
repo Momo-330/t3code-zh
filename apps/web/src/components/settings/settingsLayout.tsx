@@ -31,6 +31,7 @@ import {
   type SettingInheritanceState,
   type SettingOverridingProject,
 } from "./SettingInheritance";
+import { t } from "../../i18n";
 
 const EMPTY_SETTING_KEYS: readonly (keyof ServerSettings)[] = [];
 
@@ -225,7 +226,7 @@ export function SettingsSection({
       className={cn(!hideTitle && "space-y-2.5", className)}
     >
       {hideTitle ? (
-        <h2 className="sr-only">{title}</h2>
+        <h2 className="sr-only">{typeof title === "string" ? t(title) : title}</h2>
       ) : (
         <div
           data-settings-scroll-target
@@ -234,7 +235,7 @@ export function SettingsSection({
           <div className="flex min-w-0 items-center gap-1">
             <h2 className="flex min-h-7 items-center gap-2 text-base font-semibold text-foreground">
               {icon}
-              {title}
+              {typeof title === "string" ? t(title) : title}
             </h2>
             {titleAction}
           </div>
@@ -364,7 +365,7 @@ export function SettingsRow({
   const renderedReset = unavailable ? null : isProjectScope && scopedKeys.length > 0 ? (
     source === "project" || source === "mixed" ? (
       <SettingResetButton
-        label={typeof title === "string" ? title : "override"}
+        label={typeof title === "string" ? t(title) : "override"}
         tooltip="Reset to inherited value"
         onClick={() => (onResetOverride ? onResetOverride() : clearOverrides(scopedKeys))}
       />
@@ -396,17 +397,17 @@ export function SettingsRow({
     unavailable && control
       ? inertControl(
           !canWriteSettings
-            ? `This connection lacks permission to change settings on ${
-                context
+            ? t("This connection lacks permission to change settings on {targets}.", {
+                targets: context
                   ? context.connectedEnvironments
                       .filter((target) => !writableIds.has(target.environmentId))
                       .map((target) => target.label)
                       .join(", ") || "the selected environment"
-                  : (primaryEnvironment?.label ?? "the primary environment")
-              }.`
+                  : (primaryEnvironment?.label ?? "the primary environment"),
+              })
             : context
               ? "Reconnect the selected environment to change this setting."
-              : PRIMARY_SETTINGS_UNAVAILABLE_MESSAGE,
+              : t(PRIMARY_SETTINGS_UNAVAILABLE_MESSAGE),
         )
       : environmentWide && control
         ? inertControl("Environment-wide setting. Select an environment to change it.")
@@ -429,7 +430,12 @@ export function SettingsRow({
       : source === "t3.json"
         ? { state: "inherited", summary: "Inherited from the repository's t3.json" }
         : source === "environment" && scopedKeys.length > 0
-          ? { state: "inherited", summary: `Inherited from ${inheritedFrom}` }
+          ? {
+              state: "inherited",
+              summary: t("Inherited from {source}", {
+                source: inheritedFrom === "environment" ? "environment" : inheritedFrom,
+              }),
+            }
           : customized
             ? { state: "environment", summary: "Set on the environment" }
             : { state: "default", summary: "Built-in default" };
@@ -467,7 +473,9 @@ export function SettingsRow({
       <div className="flex flex-col gap-3 @min-[32rem]/settings-row:grid @min-[32rem]/settings-row:grid-cols-[minmax(0,1fr)_minmax(10rem,auto)] @min-[32rem]/settings-row:items-center @min-[32rem]/settings-row:gap-8">
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex min-h-5 items-center gap-1.5">
-            <h3 className="text-sm font-medium text-foreground">{title}</h3>
+            <h3 className="text-sm font-medium text-foreground">
+              {typeof title === "string" ? t(title) : title}
+            </h3>
             {renderedInheritance ? (
               <span
                 className={cn(
@@ -487,7 +495,7 @@ export function SettingsRow({
           </div>
           {description ? (
             <p className="max-w-2xl text-balance text-xs leading-normal text-muted-foreground">
-              {description}
+              {typeof description === "string" ? t(description) : description}
             </p>
           ) : null}
           {renderedStatus ? (
