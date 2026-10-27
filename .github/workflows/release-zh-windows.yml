@@ -58,8 +58,9 @@ jobs:
         env:
           # Turns on the Chinese renderer transform (see apps/web/vite/localizeI18nPlugin.ts).
           T3CODE_WEB_LOCALE: zh-CN
-          # No feed: this fork updates by rebuilding, never by downloading upstream builds.
-          T3CODE_DISABLE_AUTO_UPDATE: "true"
+          # Points the packaged updater at this fork's own releases, so
+          # "Check for updates" finds Chinese builds and never upstream ones.
+          T3CODE_DESKTOP_UPDATE_REPOSITORY: ${{ github.repository }}
         run: pnpm run dist:desktop:win --build-version "${{ steps.version.outputs.value }}"
 
       - name: Publish the release
@@ -70,8 +71,10 @@ jobs:
           body: |
             中文界面的 T3 Code 桌面端（个人 fork）。
 
-            基于上游 ${{ github.sha }} 构建，仅包含 Windows 安装包。
-            自动更新未启用：需要新版本时重新运行此工作流即可。
+            基于上游 `${{ github.sha }}` 构建，仅包含 Windows 安装包。
+
+            **更新方式**：安装后在应用内点「检查更新」。更新源指向本仓库，
+            只会下载中文版，不会拉取上游英文版。下载和安装都需要你手动确认。
           draft: false
           prerelease: false
           files: |
