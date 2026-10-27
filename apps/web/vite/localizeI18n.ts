@@ -34,6 +34,23 @@ function isUiText(raw: string): boolean {
   if (!/[A-Za-z]/.test(text)) return false;
   if (CODE_CHARS.test(text)) return false;
   if (NOISE_PREFIX.test(text)) return false;
+  // Tailwind utilities only: a class list has no lowercase words with spaces.
+  if (
+    /^(?:\S+:\S+|w-|h-|text-|bg-|p[xyltrb]?-|m[xyltrb]?-|flex|grid|gap-|rounded|border|shadow)/.test(
+      text,
+    ) &&
+    !/\s[a-z]{3,}\b.*\s/.test(text) &&
+    text.split(" ").length <= 6
+  ) {
+    // "text-sm" and "sm:w-6" are classes; "Text size" is a label.
+    if (
+      /^(?:\S+:\S+|(?:w|h|min-w|max-w|p[xyltrb]?|m[xyltrb]?|gap|rounded|text|bg|border|shadow)-)/.test(
+        text,
+      )
+    ) {
+      return false;
+    }
+  }
   // camelCase, snake_case, kebab-case, dotted paths, and bare identifiers are code.
   if (/^[A-Za-z_$][\w$]*(?:[.:][A-Za-z_$][\w$]*)*$/.test(text) && !/^[A-Z][a-z]+$/.test(text)) {
     return false;
