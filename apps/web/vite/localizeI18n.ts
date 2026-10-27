@@ -34,6 +34,23 @@ function isUiText(raw: string): boolean {
   if (!/[A-Za-z]/.test(text)) return false;
   if (CODE_CHARS.test(text)) return false;
   if (NOISE_PREFIX.test(text)) return false;
+  // Tailwind class lists start lowercase and contain hyphenated tokens. Real UI
+  // text starts with a capital, a digit, or punctuation such as a quote.
+  if (/^[a-z]/.test(text) && /\b[a-z]+-[a-z0-9]/.test(text)) return false;
+  if (
+    /^(?:flex|grid|block|inline|shrink|min-|max-|w-|h-|px-|py-|gap-|text-|border|divide|opacity|truncate|transition|-)/.test(
+      text,
+    )
+  ) {
+    return false;
+  }
+  // Dotted command IDs such as "composer.mode": no capital letters, no prose.
+  if (/^[\w.-]+$/.test(text) && !/[A-Z]/.test(text)) return false;
+  if (text.split(" ").every((word) => /^[\w.-]+$/.test(word)) && /\./.test(text)) return false;
+  // Arbitrary-value CSS never reaches a user's eyes.
+  if (/inset-|color-mix|linear-gradient|cursor-|pointer-events|bg-\[|var\(--|noopener/.test(text)) {
+    return false;
+  }
   // Tailwind utilities only: a class list has no lowercase words with spaces.
   if (
     /^(?:\S+:\S+|w-|h-|text-|bg-|p[xyltrb]?-|m[xyltrb]?-|flex|grid|gap-|rounded|border|shadow)/.test(
