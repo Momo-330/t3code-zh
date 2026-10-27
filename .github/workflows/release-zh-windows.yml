@@ -17,6 +17,21 @@ on:
         description: "Version for this build"
         required: true
         type: string
+      upstream-commit:
+        description: "Upstream commit this build is based on"
+        required: false
+        default: ""
+        type: string
+      upstream-stable:
+        description: "Nearest upstream stable tag"
+        required: false
+        default: ""
+        type: string
+      upstream-ahead:
+        description: "Commits ahead of that stable tag"
+        required: false
+        default: ""
+        type: string
   push:
     tags:
       - "zh-v*"
@@ -75,12 +90,19 @@ jobs:
           tag_name: zh-v${{ steps.version.outputs.value }}
           name: "T3 Code 中文版 ${{ steps.version.outputs.value }}"
           body: |
-            中文界面的 T3 Code 桌面端（个人 fork）。
+            中文界面的 T3 Code 桌面端（个人 fork），仅包含 Windows 安装包。
 
-            基于上游 `${{ github.sha }}` 构建，仅包含 Windows 安装包。
+            | | |
+            | --- | --- |
+            | 中文版版本 | `${{ steps.version.outputs.value }}` |
+            | 上游稳定版 | ${{ inputs.upstream-stable != '' && inputs.upstream-stable || '（手动构建）' }} |
+            | 领先稳定版 | ${{ inputs.upstream-ahead != '' && format('{0} 个提交', inputs.upstream-ahead) || '—' }} |
+            | 上游提交 | `${{ inputs.upstream-commit != '' && inputs.upstream-commit || github.sha }}` |
 
             **更新方式**：安装后在应用内点「检查更新」。更新源指向本仓库，
             只会下载中文版，不会拉取上游英文版。下载和安装都需要你手动确认。
+
+            **与官方版的差别**：只改界面语言。同步机制、性能、功能与同一上游提交完全一致。
           draft: false
           prerelease: false
           files: |

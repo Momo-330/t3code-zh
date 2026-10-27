@@ -31,6 +31,9 @@ jobs:
     outputs:
       changed: ${{ steps.merge.outputs.changed }}
       version: ${{ steps.version.outputs.value }}
+      upstream-commit: ${{ steps.upstream.outputs.commit }}
+      upstream-stable: ${{ steps.upstream.outputs.stable }}
+      upstream-ahead: ${{ steps.upstream.outputs.ahead }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -45,7 +48,10 @@ jobs:
       - name: Add upstream remote
         run: |
           git remote add upstream https://github.com/pingdotgg/t3code.git
-          git fetch upstream main --tags --depth=1
+          # Full history: a shallow fetch looks like an unrelated history to git.
+          # Upstream averages 100+ commits a day, so blame-adjacent depth matters
+          # less than being able to merge at all.
+          git fetch upstream main --tags
 
       - name: Merge upstream
         id: merge
@@ -89,6 +95,23 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Record which upstream build this is
+        id: upstream
+        run: |
+          # The nearest upstream tag tells users how current this build is;
+          # the commit count since then says how far ahead it runs.
+          tag=$(git describe --tags --abbrev=0 upstream/main 2>/dev/null || echo "no-tag")
+          # Ignore nightly tags when naming the release: a date stamp per build
+          # is noise to a user asking "which version is this".
+          stable=$(git tag --list "v*" --sort=-creatordate \
+            | grep -Ev 'nightly|preview' | head -1 || true)
+          stable=${stable:-none}
+          ahead=$(git rev-list --count "${stable}..upstream/main" 2>/dev/null || echo "?")
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "stable=$stable" >> "$GITHUB_OUTPUT"
+          echo "ahead=$ahead" >> "$GITHUB_OUTPUT"
+          echo "commit=$(git rev-parse --short upstream/main)" >> "$GITHUB_OUTPUT"
+
       - name: Report what needs translating
         if: steps.merge.outputs.changed == 'true'
         continue-on-error: true
@@ -110,4 +133,7 @@ jobs:
     uses: ./.github/workflows/release-zh-windows.yml
     with:
       version: ${{ needs.sync.outputs.version }}
+      upstream-commit: ${{ needs.sync.outputs.upstream-commit }}
+      upstream-stable: ${{ needs.sync.outputs.upstream-stable }}
+      upstream-ahead: ${{ needs.sync.outputs.upstream-ahead }}
     secrets: inherit
