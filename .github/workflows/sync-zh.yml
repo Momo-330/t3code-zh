@@ -28,10 +28,6 @@ concurrency:
 
 permissions:
   contents: write
-  # Upstream commits touch .github/workflows/*.yml. Without this, the merge
-  # push is rejected: "refusing to allow a GitHub App to create or update
-  # workflow ... without workflows permission".
-  workflows: write
 
 env:
   # Only the 02:17 UTC run (10:17 Beijing) publishes; the others just merge.
