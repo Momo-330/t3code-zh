@@ -46,6 +46,7 @@ const MENU_ZH: Readonly<Record<string, string>> = {
   Zoom: "缩放",
   "Bring All to Front": "前置全部窗口",
   Close: "关闭",
+  "Close Window": "关闭窗口",
 };
 
 export function menuLabel(english: string, vars?: Record<string, string | number>): string {
