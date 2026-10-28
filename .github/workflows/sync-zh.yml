@@ -1,19 +1,21 @@
 name: Sync upstream and release
 
-# Keeps this fork within a few hours of pingdotgg/t3code, then publishes one
-# Chinese build per day so the app's "Check for updates" has something new.
+# Keeps this fork about an hour behind pingdotgg/t3code, then publishes a
+# Chinese Windows build every four hours when a scheduled merge actually changed
+# something so the app's "Check for updates" has something new without shipping
+# a 160 MB release every hour.
 #
-# Upstream lands 100+ commits a day. Merging that often keeps conflicts small;
-# building that often would ship a 160 MB release every hour, so the build is
-# gated on RELEASE_HOUR and reuses the newest merge of the day.
+# Upstream lands 100+ commits a day. Hourly merges keep conflicts small; the
+# publish gate (UTC hours 2, 6, 10, 14, 18, 22) reuses the newest merge since
+# the last release window.
 #
 # A merge conflict fails the run instead of guessing: this fork owns only the
 # dictionary and the transform, everything else takes upstream verbatim.
 
 on:
   schedule:
-    # Every 4 hours, off the hour so the job does not queue behind the busiest slot.
-    - cron: "17 */4 * * *"
+    # Every hour at :17 UTC, off the hour so the job does not queue behind the busiest slot.
+    - cron: "17 * * * *"
   workflow_dispatch:
     inputs:
       force:
@@ -30,8 +32,10 @@ permissions:
   contents: write
 
 env:
-  # Only the 02:17 UTC run (10:17 Beijing) publishes; the others just merge.
-  RELEASE_HOUR: "2"
+  # Scheduled publish windows: UTC hours where hour % 4 == 2 (02/06/10/14/18/22 UTC;
+  # 10:17–06:17 Beijing). Other hourly runs merge only.
+  RELEASE_HOUR_MOD: "4"
+  RELEASE_HOUR_OFFSET: "2"
 
 jobs:
   sync:
@@ -107,8 +111,9 @@ jobs:
       - name: Decide whether to publish
         id: gate
         run: |
-          # Manual force always publishes. Scheduled runs publish only in
-          # RELEASE_HOUR so one merge a day becomes one release.
+          # Manual force always publishes. Scheduled runs publish only in a
+          # release window (every four hours on a fixed UTC offset) and only
+          # when the merge step produced changes.
           if [[ "${{ inputs.force }}" == "true" ]]; then
             echo "publish=true" >> "$GITHUB_OUTPUT"
             exit 0
@@ -118,11 +123,15 @@ jobs:
             exit 0
           fi
           hour=$(date -u +%H | sed 's/^0//')
-          if [[ "$hour" == "$RELEASE_HOUR" ]]; then
+          if (( hour % RELEASE_HOUR_MOD == RELEASE_HOUR_OFFSET )); then
             echo "publish=true" >> "$GITHUB_OUTPUT"
           else
             echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "Merged without publishing; the ${RELEASE_HOUR}:17 UTC run releases."
+            next=$(( (hour / RELEASE_HOUR_MOD) * RELEASE_HOUR_MOD + RELEASE_HOUR_OFFSET ))
+            if (( next <= hour )); then next=$(( next + RELEASE_HOUR_MOD )); fi
+            if (( next >= 24 )); then next=$(( RELEASE_HOUR_OFFSET )); fi
+            printf -v next_h '%02d' "$next"
+            echo "Merged without publishing; the ${next_h}:17 UTC run may release."
           fi
 
       - name: Resolve the next version
