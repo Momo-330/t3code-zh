@@ -9,6 +9,7 @@ export type ModelEsque = {
   aliases?: ReadonlyArray<string> | undefined;
   isDefault?: boolean | undefined;
   badge?: "new" | undefined;
+  routedViaMagpie?: boolean | undefined;
   isLegacy?: boolean | undefined;
   isUnavailable?: boolean | undefined;
 };

@@ -43,6 +43,10 @@
       "types": "./src/model.ts",
       "import": "./src/model.ts"
     },
+    "./magpieRouting": {
+      "types": "./src/magpieRouting.ts",
+      "import": "./src/magpieRouting.ts"
+    },
     "./advertisedEndpoint": {
       "types": "./src/advertisedEndpoint.ts",
       "import": "./src/advertisedEndpoint.ts"

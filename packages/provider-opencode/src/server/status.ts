@@ -12,6 +12,7 @@ import * as Effect from "effect/Effect";
 import * as Schedule from "effect/Schedule";
 
 import { createModelCapabilities } from "@t3tools/shared/model";
+import { shouldMarkModelRoutedViaMagpie } from "@t3tools/shared/magpieRouting";
 import { compareSemverVersions } from "@t3tools/shared/semver";
 import {
   buildServerProvider,
@@ -452,6 +453,7 @@ export interface OpenCode2Model extends OpenCodeRelease {
   readonly id: string;
   readonly name: string;
   readonly providerName?: string;
+  readonly baseURL?: string;
   readonly variants: ReadonlyArray<{ readonly id: string }>;
 }
 
@@ -647,12 +649,14 @@ const checkOpenCode2 = Effect.fn("checkOpenCode2")(function* (
     markOpenCodeLegacy(
       result.value.map((model) => {
         const subProvider = subProviderLabelFor(model);
+        const routedViaMagpie = shouldMarkModelRoutedViaMagpie({ baseUrl: model.baseURL });
         return {
           model: {
             slug: `${model.providerID}/${model.id}`,
             name: model.name,
             ...(subProvider ? { subProvider } : {}),
             isCustom: false,
+            ...(routedViaMagpie ? { routedViaMagpie: true } : {}),
             capabilities: openCode2ModelCapabilities(model),
           },
           release: model,

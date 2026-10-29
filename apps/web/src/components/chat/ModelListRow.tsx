@@ -10,6 +10,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "~/lib/utils";
 import { modelPickerModelKey } from "./modelPickerKeys";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
+import { MagpieRoutingBadge } from "./MagpieRoutingBadge";
 
 export const ModelListRow = memo(function ModelListRow(props: {
   index: number;
@@ -26,6 +27,7 @@ export const ModelListRow = memo(function ModelListRow(props: {
   isSelected: boolean;
   showProvider: boolean;
   showNewBadge?: boolean;
+  showMagpieRoutingBadge?: boolean;
   unavailable?: boolean;
   jumpLabel?: string | null;
   disabledReason?: string | null;
@@ -63,6 +65,7 @@ export const ModelListRow = memo(function ModelListRow(props: {
               New
             </span>
           ) : null}
+          {props.showMagpieRoutingBadge ? <MagpieRoutingBadge /> : null}
           {props.unavailable ? (
             <Badge variant="outline" size="sm">
               Unavailable

@@ -32,11 +32,14 @@ export const loadOpenCode2Catalog = (
       );
       return models.data.map((model) => {
         const providerName = providerNames.get(model.providerID);
+        const baseURL =
+          typeof model.settings?.baseURL === "string" ? model.settings.baseURL : undefined;
         return {
           providerID: model.providerID,
           id: model.id,
           name: model.name,
           ...(providerName ? { providerName } : {}),
+          ...(baseURL ? { baseURL } : {}),
           variants: model.variants.map((variant) => ({ id: variant.id })),
           family: model.family,
           released: model.time.released,

@@ -70,6 +70,7 @@ type ModelPickerItem = {
   shortName?: string;
   subProvider?: string;
   badge?: "new";
+  routedViaMagpie?: boolean;
   instanceId: ProviderInstanceId;
   driverKind: ProviderDriverKind;
   instanceDisplayName: string;
@@ -558,6 +559,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
           ...(model.shortName ? { shortName: model.shortName } : {}),
           ...(model.subProvider ? { subProvider: model.subProvider } : {}),
           ...(model.badge ? { badge: model.badge } : {}),
+          ...(model.routedViaMagpie ? { routedViaMagpie: true } : {}),
           ...(model.isLegacy ? { isLegacy: true } : {}),
           ...(model.isUnavailable ? { isUnavailable: true } : {}),
           instanceId,
@@ -1016,6 +1018,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
                     }
                     showProvider={rowsMixProviders || Boolean(model.subProvider)}
                     showNewBadge={model.badge === "new"}
+                    showMagpieRoutingBadge={model.routedViaMagpie === true}
                     unavailable={model.isUnavailable === true}
                     jumpLabel={modelJumpLabelByKey.get(modelKey) ?? null}
                     disabledReason={disabledReason}

@@ -780,3 +780,36 @@ describe("default model settings and new-thread composer parity", () => {
     },
   );
 });
+
+describe("magpie routing badges in model options", () => {
+  it("passes through server routedViaMagpie and infers from instance gateway env", () => {
+    const instanceId = ProviderInstanceId.make("codex");
+    const driver = ProviderDriverKind.make("codex");
+    const settings: UnifiedSettings = {
+      ...DEFAULT_UNIFIED_SETTINGS,
+      providerInstances: {
+        [instanceId]: {
+          driver,
+          environment: [{ name: "OPENAI_BASE_URL", value: "http://127.0.0.1:3425/v1", sensitive: false }],
+        },
+      },
+    };
+    const liveProvider: ServerProvider = {
+      ...provider({ provider: driver, instanceId, models: [] }),
+      models: [
+        {
+          slug: "codex/gpt-6.1-sol",
+          name: "GPT 6.1 Sol",
+          isCustom: false,
+          capabilities: null,
+          routedViaMagpie: true,
+        },
+        { slug: "gpt-5.4", name: "GPT-5.4", isCustom: false, capabilities: null },
+      ],
+    };
+    const entry = deriveProviderInstanceEntries([liveProvider])[0]!;
+    const options = getAppModelOptionsForInstance(settings, entry);
+    expect(options.find((option) => option.slug === "codex/gpt-6.1-sol")?.routedViaMagpie).toBe(true);
+    expect(options.find((option) => option.slug === "gpt-5.4")?.routedViaMagpie).toBeUndefined();
+  });
+});
