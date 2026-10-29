@@ -78,6 +78,7 @@ export const ServerProviderModel = Schema.Struct({
   subProvider: Schema.optional(TrimmedNonEmptyString),
   aliases: Schema.optional(Schema.Array(TrimmedNonEmptyString)),
   badge: Schema.optional(Schema.Literal("new")),
+  routedViaMagpie: Schema.optional(Schema.Boolean),
   isCustom: Schema.Boolean,
   isDefault: Schema.optional(Schema.Boolean),
   isLegacy: Schema.optional(Schema.Boolean),

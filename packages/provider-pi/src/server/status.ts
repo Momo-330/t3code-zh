@@ -4,6 +4,7 @@ import {
   type ServerProviderModel,
 } from "@t3tools/contracts";
 import type { PiSettings } from "../settings.ts";
+import { shouldMarkModelRoutedViaMagpie } from "@t3tools/shared/magpieRouting";
 import { causeErrorTag } from "@t3tools/shared/observability";
 import { resolveSpawnCommand } from "@t3tools/shared/shell";
 import { compareSemverVersions } from "@t3tools/shared/semver";
@@ -112,11 +113,14 @@ function parseDiscoveredModels(
     const slug = `${provider}/${id}`;
     if (seen.has(slug)) continue;
     seen.add(slug);
+    const baseUrl = recordString(model, "baseUrl");
+    const routedViaMagpie = shouldMarkModelRoutedViaMagpie({ baseUrl, catalogModel: model });
     parsed.push({
       slug,
       name: recordString(model, "name") ?? slug,
       subProvider: provider,
       isCustom: false,
+      ...(routedViaMagpie ? { routedViaMagpie: true } : {}),
       capabilities: thinkingCapabilitiesForPiModel(
         model,
         provider === activeProvider && id === activeModelId

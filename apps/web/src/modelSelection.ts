@@ -32,6 +32,10 @@ import {
 } from "./providerInstances";
 import { sortModelsForProviderInstance } from "./modelOrdering";
 import { resolveModelShortName } from "@t3tools/client-runtime/provider-clients";
+import {
+  inferMagpieRoutingForInstanceModel,
+  readMagpieGatewayUrlFromInstanceEnvironment,
+} from "@t3tools/shared/magpieRouting";
 
 export const MAX_CUSTOM_MODEL_LENGTH = 256;
 const DEFAULT_TEXT_GENERATION_INSTANCE_ID = ProviderInstanceId.make("codex");
@@ -61,6 +65,7 @@ export interface AppModelOption {
   subProvider?: string;
   aliases?: ReadonlyArray<string>;
   badge?: "new";
+  routedViaMagpie?: boolean;
   isCustom: boolean;
   isDefault?: boolean;
   isLegacy?: boolean;
@@ -100,9 +105,26 @@ function toAppModelOption(
   if (model.subProvider) option.subProvider = model.subProvider;
   if (model.aliases) option.aliases = model.aliases;
   if (model.badge) option.badge = model.badge;
+  if (model.routedViaMagpie) option.routedViaMagpie = true;
   if (model.isDefault) option.isDefault = true;
   if (model.isLegacy) option.isLegacy = true;
   return option;
+}
+
+function withMagpieRoutingInference(
+  settings: UnifiedSettings,
+  instanceId: ProviderInstanceId,
+  option: AppModelOption,
+): AppModelOption {
+  const instanceUsesMagpieGateway = Boolean(
+    readMagpieGatewayUrlFromInstanceEnvironment(settings.providerInstances?.[instanceId]?.environment),
+  );
+  const routedViaMagpie = inferMagpieRoutingForInstanceModel({
+    slug: option.slug,
+    routedViaMagpie: option.routedViaMagpie,
+    instanceUsesMagpieGateway,
+  });
+  return routedViaMagpie === option.routedViaMagpie ? option : { ...option, routedViaMagpie };
 }
 
 function readInstanceModelPreferences(
@@ -191,7 +213,9 @@ function getAppModelOptions(
 
   const preferences = readInstanceModelPreferences(settings, defaultInstanceId);
   return appendUnavailableDynamicModelSelection(
-    applyInstanceModelPreferences(options, preferences),
+    applyInstanceModelPreferences(options, preferences).map((option) =>
+      withMagpieRoutingInference(settings, defaultInstanceId, option),
+    ),
     rawModels,
     provider,
     selectedModel,
@@ -232,7 +256,9 @@ export function getAppModelOptionsForInstance(
 
   const preferences = readInstanceModelPreferences(settings, entry.instanceId);
   return appendUnavailableDynamicModelSelection(
-    applyInstanceModelPreferences(options, preferences),
+    applyInstanceModelPreferences(options, preferences).map((option) =>
+      withMagpieRoutingInference(settings, entry.instanceId, option),
+    ),
     entry.models,
     entry.driverKind,
     selectedModel,
