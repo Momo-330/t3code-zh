@@ -75,13 +75,15 @@ jobs:
         run: npm --prefix apps/desktop run ensure:electron
 
       - name: Build the Windows installer
+        shell: bash
         env:
           # Turns on the Chinese renderer transform (see apps/web/vite/localizeI18nPlugin.ts).
           T3CODE_WEB_LOCALE: zh-CN
           # Points the packaged updater at this fork's own releases, so
           # "Check for updates" finds Chinese builds and never upstream ones.
           T3CODE_DESKTOP_UPDATE_REPOSITORY: ${{ github.repository }}
-        run: pnpm run dist:desktop:win --build-version "${{ steps.version.outputs.value }}"
+        # vp owns the Node.js and pnpm toolchain here; a bare `pnpm` is not on PATH.
+        run: vp run dist:desktop:win --build-version "${{ steps.version.outputs.value }}"
 
       - name: Publish the release
         uses: softprops/action-gh-release@v2
