@@ -57,6 +57,12 @@ jobs:
             }
             if (!response.ok) {
               const reasons = { 401: 'Key 无效或已过期', 402: '额度或余额不足', 403: '没有接口或模型权限', 404: '接口或模型不存在', 429: '限流或额度不足' };
+              const failure = await response.json().catch(() => ({}));
+              const message = failure?.error?.message;
+              if (typeof message === 'string') {
+                const safe = message.replaceAll(key, '[REDACTED]').replaceAll(key.trim(), '[REDACTED]').replace(/sk-[A-Za-z0-9_-]+/g, '[REDACTED]').slice(0, 600);
+                core.notice(`厂商错误说明（已脱敏）：${safe}`);
+              }
               core.setFailed(`Magpie 连接验证失败：HTTP ${response.status}，${reasons[response.status] || '厂商接口异常'}。未输出响应正文。`);
               return;
             }
