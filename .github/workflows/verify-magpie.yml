@@ -1,0 +1,72 @@
+name: Verify Magpie connection
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/verify-magpie.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-magpie
+  cancel-in-progress: false
+
+jobs:
+  connection:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Verify the saved provider key with a minimal model request
+        uses: actions/github-script@v8
+        env:
+          MAGPIE_API_KEY: ${{ secrets.MAGPIE_API_KEY }}
+          MAGPIE_REPAIR_PROVIDER: ${{ vars.MAGPIE_REPAIR_PROVIDER || 'opencode-go' }}
+          MAGPIE_REPAIR_MODEL: ${{ vars.MAGPIE_REPAIR_MODEL }}
+          REPAIR_SWITCH: ${{ vars.CODEX_AUTO_REPAIR }}
+          REPAIR_ENGINE: ${{ vars.SYNC_REPAIR_ENGINE || 'opencode' }}
+        with:
+          script: |
+            const fs = require('node:fs');
+            const path = require('node:path');
+            const key = process.env.MAGPIE_API_KEY;
+            if (!key) {
+              core.setFailed('MAGPIE_API_KEY 未配置，或不在 Repository secrets 中。');
+              return;
+            }
+            core.notice('MAGPIE_API_KEY 已配置。');
+            const { data } = await github.rest.repos.getContent({ ...context.repo, path: '.github/scripts/magpie-repair.cjs', ref: context.sha });
+            if (data.type !== 'file' || data.encoding !== 'base64') throw new Error('Cannot load the pinned provider configuration');
+            const filename = path.join(process.env.RUNNER_TEMP, 'magpie-connection-config.cjs');
+            fs.writeFileSync(filename, Buffer.from(data.content, 'base64'));
+            const { configuration } = require(filename);
+            const config = configuration(process.env.MAGPIE_REPAIR_PROVIDER, process.env.MAGPIE_REPAIR_MODEL, ['connection-check.txt']);
+            const model = config.model.slice('magpie/'.length);
+            let response;
+            try {
+              response = await fetch(config.provider.magpie.options.baseURL + '/chat/completions', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model, messages: [{ role: 'user', content: 'Reply OK.' }], max_tokens: 16, stream: false }),
+                signal: AbortSignal.timeout(60000),
+              });
+            } catch {
+              core.setFailed('Magpie 厂商请求连接失败或超时；未输出密钥或原始错误。');
+              return;
+            }
+            if (!response.ok) {
+              const reasons = { 401: 'Key 无效或已过期', 402: '额度或余额不足', 403: '没有接口或模型权限', 404: '接口或模型不存在', 429: '限流或额度不足' };
+              core.setFailed(`Magpie 连接验证失败：HTTP ${response.status}，${reasons[response.status] || '厂商接口异常'}。未输出响应正文。`);
+              return;
+            }
+            const result = await response.json();
+            if (!Array.isArray(result.choices) || !result.choices.length || result.error) {
+              core.setFailed('接口返回成功状态，但没有有效的 Chat Completions 结果。');
+              return;
+            }
+            core.notice(`Magpie 真实请求通过：${process.env.MAGPIE_REPAIR_PROVIDER} / ${model}，HTTP ${response.status}。`);
+            const enabled = process.env.REPAIR_ENGINE === 'opencode' && (process.env.REPAIR_SWITCH === '' || process.env.REPAIR_SWITCH === 'true');
+            if (enabled) core.notice('自动冲突修复已启用，将在普通同步失败且发现实际源码冲突时尝试修复。');
+            else core.warning('Key 可用，但自动修复未启用 Magpie：检查 CODEX_AUTO_REPAIR 和 SYNC_REPAIR_ENGINE。');
+            await core.summary.addHeading('Magpie 连接检查').addRaw(`已确认 Repository secret 存在，${model} 真实请求成功。自动修复${enabled ? '已启用' : '未启用 Magpie'}。本次只验证连接，没有执行真实仓库冲突修复。`).write();
