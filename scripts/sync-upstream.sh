@@ -2,6 +2,11 @@
 set -euo pipefail
 
 target=${1:-upstream/main}
+prepare_repair=${2:-}
+if [[ -n "$prepare_repair" && "$prepare_repair" != --prepare-repair ]]; then
+  echo 'Unsupported sync mode' >&2
+  exit 1
+fi
 before=$(git rev-parse HEAD)
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "Sync requires a clean checkout; existing changes were left untouched." >&2
@@ -26,6 +31,10 @@ git restore --source="$before" --staged --worktree -- .github/workflows
 
 conflicts=$(git diff --name-only --diff-filter=U)
 if [[ -n "$conflicts" ]]; then
+  if [[ "$prepare_repair" == --prepare-repair ]]; then
+    if [[ -n "${GITHUB_OUTPUT:-}" ]]; then echo 'conflicted=true' >> "$GITHUB_OUTPUT"; fi
+    exit 0
+  fi
   printf 'Unresolved source conflicts (no changes pushed):\n%s\n' "$conflicts" >&2
   if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
     {
@@ -38,6 +47,12 @@ if [[ -n "$conflicts" ]]; then
   fi
   git merge --abort
   exit 1
+fi
+
+if [[ "$prepare_repair" == --prepare-repair ]]; then
+  git merge --abort
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then echo 'conflicted=false' >> "$GITHUB_OUTPUT"; fi
+  exit 0
 fi
 
 git commit -m 'chore: sync upstream'

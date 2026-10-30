@@ -1,0 +1,261 @@
+name: Repair upstream conflicts
+
+on:
+  workflow_run:
+    workflows: [Sync upstream and release]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      retry:
+        description: Retry a previously attempted base/upstream pair
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/repair-upstream.yml
+      - .github/scripts/upstream-repair.cjs
+      - .github/scripts/upstream-repair.test.cjs
+      - .github/prompts/repair-upstream.md
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upstream-conflict-repair
+  cancel-in-progress: false
+
+jobs:
+  configuration:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'failure' &&
+       github.event.workflow_run.head_branch == github.event.repository.default_branch &&
+       github.event.workflow_run.event != 'pull_request' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    outputs:
+      enabled: ${{ steps.config.outputs.enabled }}
+      base: ${{ steps.controls.outputs.base }}
+      fresh: ${{ steps.controls.outputs.fresh }}
+    steps:
+      - id: config
+        env:
+          ENABLED: ${{ vars.CODEX_AUTO_REPAIR }}
+          HAS_API_KEY: ${{ secrets.OPENAI_API_KEY != '' }}
+          SOURCE_EVENT: ${{ github.event_name }}
+        run: |
+          key_state='未配置'
+          switch_state='关闭'
+          if [[ "$HAS_API_KEY" == true ]]; then key_state='已配置'; fi
+          if [[ "$ENABLED" == true ]]; then switch_state='开启'; fi
+          echo "授权状态：OPENAI_API_KEY ${key_state}；CODEX_AUTO_REPAIR ${switch_state}。" >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$SOURCE_EVENT" == push ]]; then
+            echo 'enabled=false' >> "$GITHUB_OUTPUT"
+            echo '部署检查完成；本次 push 不会调用 AI。自动修复只由同步失败或手动运行触发，并要求授权配置。' >> "$GITHUB_STEP_SUMMARY"
+          elif [[ "$ENABLED" != true ]]; then
+            echo 'enabled=false' >> "$GITHUB_OUTPUT"
+            echo '自动修复尚未启用；没有调用 AI。配置 OPENAI_API_KEY secret 后，将 CODEX_AUTO_REPAIR repository variable 设为 true。' >> "$GITHUB_STEP_SUMMARY"
+          elif [[ "$HAS_API_KEY" != true ]]; then
+            echo '::error::自动修复已开启，但缺少 GitHub Actions secret OPENAI_API_KEY。不要把密钥粘贴到日志或聊天。'
+            exit 1
+          else
+            echo 'enabled=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Test repair controller without calling AI
+        id: controls
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('node:fs');
+            const path = require('node:path');
+            const { execFileSync } = require('node:child_process');
+            const { data: head } = await github.rest.repos.getCommit({ ...context.repo, ref: context.payload.repository.default_branch });
+            core.setOutput('base', context.sha);
+            core.setOutput('fresh', head.sha === context.sha ? 'true' : 'false');
+            const directory = fs.mkdtempSync(path.join(process.env.RUNNER_TEMP, 'repair-tests-'));
+            for (const file of ['.github/scripts/upstream-repair.cjs', '.github/scripts/upstream-repair.test.cjs', 'scripts/sync-upstream.sh']) {
+              const { data } = await github.rest.repos.getContent({ ...context.repo, path: file, ref: context.sha });
+              if (data.type !== 'file' || data.encoding !== 'base64') throw new Error(`Cannot load ${file}`);
+              const destination = path.join(directory, file);
+              fs.mkdirSync(path.dirname(destination), { recursive: true });
+              fs.writeFileSync(destination, Buffer.from(data.content, 'base64'));
+            }
+            const env = { ...process.env };
+            delete env.GITHUB_OUTPUT;
+            delete env.GITHUB_STEP_SUMMARY;
+            execFileSync(process.execPath, ['--test', path.join(directory, '.github/scripts/upstream-repair.test.cjs')], { env, stdio: 'inherit' });
+
+  repair:
+    needs: configuration
+    if: needs.configuration.outputs.enabled == 'true' && needs.configuration.outputs.fresh == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    outputs:
+      repaired: ${{ steps.export.outputs.repaired }}
+      base: ${{ steps.prepare.outputs.base }}
+      upstream: ${{ steps.prepare.outputs.upstream }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.configuration.outputs.base }}
+          fetch-depth: 0
+          persist-credentials: false
+          sparse-checkout: |
+            /*
+            !/.repos/
+            !/apps/mobile/modules/t3-terminal/Vendor/**/*.a
+          sparse-checkout-cone-mode: false
+
+      - name: Pin trusted controller and prepare a real conflict
+        id: prepare
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          cp .github/scripts/upstream-repair.cjs "$RUNNER_TEMP/upstream-repair.cjs"
+          cp scripts/sync-upstream.sh "$RUNNER_TEMP/sync-upstream.sh"
+          cp .github/prompts/repair-upstream.md "$RUNNER_TEMP/repair-prompt.md"
+          mkdir -p "$RUNNER_TEMP/repair-codex-home"
+          git fetch --no-tags https://github.com/pingdotgg/t3code.git main
+          node "$RUNNER_TEMP/upstream-repair.cjs" prepare "$RUNNER_TEMP/repair-state" FETCH_HEAD "$RUNNER_TEMP/sync-upstream.sh"
+          if [[ -f "$RUNNER_TEMP/repair-state/conflicts.json" ]]; then
+            printf '\nConflicting paths (JSON):\n' >> "$RUNNER_TEMP/repair-prompt.md"
+            cat "$RUNNER_TEMP/repair-state/conflicts.json" >> "$RUNNER_TEMP/repair-prompt.md"
+          fi
+
+      - uses: actions/cache/restore@v4
+        id: attempted
+        if: steps.prepare.outputs.conflicted == 'true'
+        with:
+          path: ${{ runner.temp }}/repair-attempt
+          key: upstream-repair-${{ steps.prepare.outputs.base }}-${{ steps.prepare.outputs.upstream }}
+
+      - name: Bound repeat attempts
+        id: gate
+        if: steps.prepare.outputs.conflicted == 'true'
+        env:
+          ALREADY_ATTEMPTED: ${{ steps.attempted.outputs.cache-hit }}
+          RETRY: ${{ inputs.retry }}
+        run: |
+          if [[ "$ALREADY_ATTEMPTED" == true && "$RETRY" != true ]]; then
+            echo 'run=false' >> "$GITHUB_OUTPUT"
+            echo '该 base/upstream 组合已经尝试过；没有重复调用 AI。可手动运行本工作流并选 retry。' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'run=true' >> "$GITHUB_OUTPUT"
+            mkdir -p "$RUNNER_TEMP/repair-attempt"
+            echo attempted > "$RUNNER_TEMP/repair-attempt/attempted"
+          fi
+
+      - uses: actions/cache/save@v4
+        if: steps.gate.outputs.run == 'true' && steps.attempted.outputs.cache-hit != 'true'
+        with:
+          path: ${{ runner.temp }}/repair-attempt
+          key: upstream-repair-${{ steps.prepare.outputs.base }}-${{ steps.prepare.outputs.upstream }}
+
+      - name: Resolve conflicting files with Codex
+        if: steps.gate.outputs.run == 'true'
+        timeout-minutes: 15
+        uses: openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675 # v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          responses-api-endpoint: ${{ vars.CODEX_SYNC_RESPONSES_ENDPOINT }}
+          codex-version: 0.138.0
+          codex-home: ${{ runner.temp }}/repair-codex-home
+          permission-profile: ":workspace"
+          safety-strategy: drop-sudo
+          allow-bot-users: github-actions[bot]
+          model: ${{ vars.CODEX_SYNC_MODEL }}
+          prompt-file: ${{ runner.temp }}/repair-prompt.md
+          output-file: ${{ runner.temp }}/repair-message.txt
+
+      - name: Independently enforce the repair scope
+        id: export
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          node "$RUNNER_TEMP/upstream-repair.cjs" export "$RUNNER_TEMP/repair-state"
+          echo 'repaired=true' >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v7
+        if: steps.export.outputs.repaired == 'true'
+        with:
+          name: upstream-repair
+          path: |
+            ${{ runner.temp }}/repair-state/manifest.json
+            ${{ runner.temp }}/repair-state/resolution.patch
+          retention-days: 7
+          if-no-files-found: error
+
+  candidate:
+    needs: repair
+    if: needs.repair.outputs.repaired == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      commit: ${{ steps.candidate.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.repair.outputs.base }}
+          fetch-depth: 0
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: upstream-repair
+          path: ${{ runner.temp }}/repair-state
+      - name: Publish a candidate, retaining both merge parents
+        id: candidate
+        env:
+          UPSTREAM: ${{ needs.repair.outputs.upstream }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch --no-tags https://github.com/pingdotgg/t3code.git "$UPSTREAM"
+          candidate=$(node .github/scripts/upstream-repair.cjs materialize "$RUNNER_TEMP/repair-state")
+          git push origin "$candidate:refs/heads/automation/upstream-repair/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+
+  validate:
+    needs: candidate
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    uses: ./.github/workflows/ci.yml
+    with:
+      source-commit: ${{ needs.candidate.outputs.commit }}
+
+  promote:
+    needs: [repair, candidate, validate]
+    if: needs.validate.result == 'success'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.repair.outputs.base }}
+          fetch-depth: 0
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+      - name: Promote only if main still has the tested base
+        id: promote
+        env:
+          BASE: ${{ needs.repair.outputs.base }}
+          CANDIDATE: ${{ needs.candidate.outputs.commit }}
+        run: node .github/scripts/upstream-repair.cjs promote "$BASE" "$CANDIDATE"
+      - name: Resume the normal sync and release workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run sync-zh.yml --ref main
+      - name: Remove the successfully promoted temporary branch
+        if: steps.promote.outputs.promoted == 'true'
+        run: git push origin --delete "automation/upstream-repair/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"

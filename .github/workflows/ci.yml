@@ -1,6 +1,12 @@
 name: CI
 
 on:
+  workflow_call:
+    inputs:
+      source-commit:
+        description: Immutable candidate commit to validate before promotion
+        required: true
+        type: string
   pull_request:
   push:
     branches:
@@ -10,7 +16,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.sha }}
+  group: ci-${{ github.event.pull_request.number || inputs.source-commit || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -40,6 +46,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.source-commit || github.sha }}
           fetch-depth: 2
           sparse-checkout: |
             /pnpm-workspace.yaml
@@ -69,6 +76,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.source-commit || github.sha }}
           sparse-checkout: |
             /*
             !/.repos/
@@ -125,6 +133,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.source-commit || github.sha }}
           sparse-checkout: |
             /*
             !/.repos/
@@ -219,6 +228,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.source-commit || github.sha }}
           sparse-checkout: |
             /*
             !/.repos/
@@ -295,6 +305,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.source-commit || github.sha }}
           sparse-checkout: |
             /*
             !/.repos/
@@ -366,6 +377,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.source-commit || github.sha }}
           fetch-depth: 2
           sparse-checkout: |
             /*
@@ -475,6 +487,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.source-commit || github.sha }}
           sparse-checkout: |
             /*
             !/.repos/
@@ -508,6 +521,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.source-commit || github.sha }}
           sparse-checkout: |
             /*
             !/.repos/
@@ -541,6 +555,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.source-commit || github.sha }}
           sparse-checkout: |
             /*
             !/.repos/
