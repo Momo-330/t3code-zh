@@ -216,7 +216,7 @@ export default function LargeTextViewer(props: {
         className="flex min-h-10 shrink-0 flex-wrap items-center gap-x-1 border-b border-border/60 px-3 py-2 text-xs text-muted-foreground tabular-nums"
         role="status"
       >
-        {Math.max(0, meta.count - (props.delimiter && meta.count ? 1 : 0)).toLocaleString()}
+        {Math.max(0, meta.count - (props.delimiter && meta.count ? 1 : 0)).toLocaleString()}{" "}
         {props.delimiter ? "rows" : "lines"}
         {props.delimiter ? ` · ${meta.count ? meta.columns.toLocaleString() : 0} columns` : ""}
         {meta.complete && meta.sizeBytes !== undefined

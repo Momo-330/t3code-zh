@@ -318,7 +318,10 @@ export const make = Effect.gen(function* () {
           { role: "minimize", label: menuLabel("Minimize") },
           { role: "zoom", label: menuLabel("Zoom") },
           ...(environment.platform === "darwin"
-            ? [{ type: "separator" as const }, { role: "front" as const, label: menuLabel("Bring All to Front") }]
+            ? [
+                { type: "separator" as const },
+                { role: "front" as const, label: menuLabel("Bring All to Front") },
+              ]
             : []),
         ],
       },

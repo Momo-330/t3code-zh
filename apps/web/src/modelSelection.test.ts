@@ -790,7 +790,9 @@ describe("magpie routing badges in model options", () => {
       providerInstances: {
         [instanceId]: {
           driver,
-          environment: [{ name: "OPENAI_BASE_URL", value: "http://127.0.0.1:3425/v1", sensitive: false }],
+          environment: [
+            { name: "OPENAI_BASE_URL", value: "http://127.0.0.1:3425/v1", sensitive: false },
+          ],
         },
       },
     };
@@ -809,7 +811,9 @@ describe("magpie routing badges in model options", () => {
     };
     const entry = deriveProviderInstanceEntries([liveProvider])[0]!;
     const options = getAppModelOptionsForInstance(settings, entry);
-    expect(options.find((option) => option.slug === "codex/gpt-6.1-sol")?.routedViaMagpie).toBe(true);
+    expect(options.find((option) => option.slug === "codex/gpt-6.1-sol")?.routedViaMagpie).toBe(
+      true,
+    );
     expect(options.find((option) => option.slug === "gpt-5.4")?.routedViaMagpie).toBeUndefined();
   });
 });
