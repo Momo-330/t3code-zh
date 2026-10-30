@@ -14,6 +14,8 @@ const presets = {
 function configuration(provider, model, conflicts) {
   if (!Object.hasOwn(presets, provider)) throw new Error("Unknown Magpie repair provider");
   const selected = presets[provider];
+  // OpenCode adds Go's required session-routing headers only for its native provider identity.
+  const identity = provider === "opencode-go" ? "opencode-go" : "magpie";
   model ||= selected.model;
   if (!/^[a-zA-Z0-9._-]+$/.test(model)) throw new Error("Invalid model ID");
   if (
@@ -26,9 +28,9 @@ function configuration(provider, model, conflicts) {
     throw new Error("Conflict paths cannot be represented as exact permission rules");
   }
   return {
-    model: `magpie/${model}`,
-    small_model: `magpie/${model}`,
-    enabled_providers: ["magpie"],
+    model: `${identity}/${model}`,
+    small_model: `${identity}/${model}`,
+    enabled_providers: [identity],
     share: "disabled",
     autoupdate: false,
     snapshot: false,
@@ -47,7 +49,7 @@ function configuration(provider, model, conflicts) {
       "upstream-repair": { mode: "primary", steps: 24 },
     },
     provider: {
-      magpie: {
+      [identity]: {
         npm: "@ai-sdk/openai-compatible",
         options: { baseURL: selected.url, apiKey: "{env:MAGPIE_API_KEY}", timeout: 120000 },
         models: {

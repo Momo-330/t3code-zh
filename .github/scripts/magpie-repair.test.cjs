@@ -9,9 +9,11 @@ test("Magpie presets use the supplied official endpoints and Flash models", () =
     ["zhipu", "https://open.bigmodel.cn/api/coding/paas/v4", "GLM-5.3-Flash"],
   ]) {
     const config = configuration(provider, "", ["src/app.ts"]);
-    assert.equal(config.model, `magpie/${model}`);
-    assert.equal(config.provider.magpie.options.baseURL, url);
-    assert.equal(config.provider.magpie.options.apiKey, "{env:MAGPIE_API_KEY}");
+    const identity = provider === "opencode-go" ? "opencode-go" : "magpie";
+    assert.equal(config.model, `${identity}/${model}`);
+    assert.deepEqual(config.enabled_providers, [identity]);
+    assert.equal(config.provider[identity].options.baseURL, url);
+    assert.equal(config.provider[identity].options.apiKey, "{env:MAGPIE_API_KEY}");
   }
   assert.equal(configuration("zhipu", "GLM-5.3", ["app.ts"]).model, "magpie/GLM-5.3");
   assert.throws(() => configuration("qwen-embedding", "", ["app.ts"]));
