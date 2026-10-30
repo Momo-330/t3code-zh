@@ -3,6 +3,7 @@ import {
   updateClientSettings,
   useClientSettings,
 } from "../../hooks/useSettings";
+import { t } from "../../i18n";
 import { MenuCheckboxItem, MenuGroup, MenuGroupLabel, MenuItem, MenuSeparator } from "../ui/menu";
 import {
   isDefaultThreadDetailsVisibility,
@@ -29,7 +30,7 @@ export function ThreadDetailsItemsMenuItems() {
               })
             }
           >
-            {item.label}
+            {t(item.label)}
           </MenuCheckboxItem>
         ))}
       </MenuGroup>

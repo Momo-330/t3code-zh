@@ -1,6 +1,6 @@
 import type { ContextMenuItem } from "@t3tools/contracts";
 import type { SnoozePreset } from "@t3tools/client-runtime/state/thread-settled";
-import { t } from "../i18n";
+import { t, tSnoozePresetLabel } from "../i18n";
 
 export type ThreadActionMenuId =
   | "find"
@@ -156,7 +156,7 @@ export function buildThreadActionMenuItems(
                 children: [
                   ...state.snoozePresets.map((preset) => ({
                     id: `snooze:${preset.id}` as const,
-                    label: `${t(preset.label)} (${preset.whenLabel})`,
+                    label: `${tSnoozePresetLabel(preset.label)} (${preset.whenLabel})`,
                   })),
                   {
                     id: "snooze:custom" as const,

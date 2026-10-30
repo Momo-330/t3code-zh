@@ -14,6 +14,7 @@ import { CircleAlertIcon, CircleCheckIcon, InfoIcon, TriangleAlertIcon, XIcon } 
 import { Check, ChevronDown, ChevronUp, Copy } from "lucide";
 
 import { cn } from "~/lib/utils";
+import { t } from "~/i18n";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { MorphIcon } from "~/components/MorphIcon";
 import { useComposerDraftStore } from "~/composerDraftStore";
@@ -164,6 +165,11 @@ function CopyErrorButton({ text }: { text: string }) {
 const toastExpandablePanelClassName =
   "mt-2 max-h-40 min-h-0 overflow-y-auto overscroll-contain pr-0.5 select-text";
 
+/** Toast copy is raised from `.ts` services and callbacks, so translate it where it renders. */
+function localizeToastText(value: unknown): string | undefined {
+  return typeof value === "string" ? t(value) : undefined;
+}
+
 function ToastExpandableSection({
   children,
   labels,
@@ -214,13 +220,19 @@ function ToastDescriptionAndExpandable({
   const [open, setOpen] = useState(false);
 
   if (!expandableContent) {
-    return <Toast.Description className={descriptionClassName} data-slot="toast-description" />;
+    return (
+      <Toast.Description className={descriptionClassName} data-slot="toast-description">
+        {localizeToastText(toastDescription)}
+      </Toast.Description>
+    );
   }
 
   if (!descriptionTrigger) {
     return (
       <>
-        <Toast.Description className={descriptionClassName} data-slot="toast-description" />
+        <Toast.Description className={descriptionClassName} data-slot="toast-description">
+          {localizeToastText(toastDescription)}
+        </Toast.Description>
         <ToastExpandableSection labels={labels}>{expandableContent}</ToastExpandableSection>
       </>
     );
@@ -265,7 +277,9 @@ function ToastDescriptionAndExpandable({
                 "underline-offset-2 decoration-muted-foreground/60 group-hover:underline",
               )}
               data-slot="toast-description"
-            />
+            >
+              {localizeToastText(toastDescription)}
+            </Toast.Description>
           </div>
           <MorphIcon
             aria-hidden
@@ -333,6 +347,7 @@ interface ToastBodyContentProps extends ToastBodyDescriptor {
   readonly actionProps: { readonly children?: ReactNode } | undefined;
   readonly toastData: ThreadToastData | undefined;
   readonly toastDescription: unknown;
+  readonly toastTitle: unknown;
   readonly toastType: unknown;
 }
 
@@ -346,6 +361,7 @@ function ToastBodyContent({
   hasTrailingControls,
   toastData,
   toastDescription,
+  toastTitle,
   toastType,
 }: ToastBodyContentProps) {
   const additionalActions = toastData?.additionalActions ?? [];
@@ -383,7 +399,9 @@ function ToastBodyContent({
               <Icon className="in-data-[type=error]:text-destructive in-data-[type=info]:text-info in-data-[type=success]:text-success in-data-[type=warning]:text-warning in-data-[type=loading]:opacity-80" />
             </div>
           ) : null}
-          <Toast.Title className="min-w-0 wrap-break-word font-medium" data-slot="toast-title" />
+          <Toast.Title className="min-w-0 wrap-break-word font-medium" data-slot="toast-title">
+            {localizeToastText(toastTitle)}
+          </Toast.Title>
         </div>
         <ToastDescriptionAndExpandable
           toastData={toastData}
@@ -688,6 +706,7 @@ function Toasts({ position }: { position: ToastPosition }) {
                   actionProps={toast.actionProps}
                   toastData={toast.data}
                   toastDescription={toast.description}
+                  toastTitle={toast.title}
                   toastType={toast.type}
                 />
               </Toast.Content>
@@ -745,7 +764,9 @@ function AnchoredToasts() {
                 >
                   {tooltipStyle ? (
                     <Toast.Content className="pointer-events-auto px-2 py-1">
-                      <Toast.Title data-slot="toast-title" />
+                      <Toast.Title data-slot="toast-title">
+                        {localizeToastText(toast.title)}
+                      </Toast.Title>
                     </Toast.Content>
                   ) : (
                     <>
@@ -783,6 +804,7 @@ function AnchoredToasts() {
                           actionProps={toast.actionProps}
                           toastData={toast.data}
                           toastDescription={toast.description}
+                          toastTitle={toast.title}
                           toastType={toast.type}
                         />
                       </Toast.Content>
