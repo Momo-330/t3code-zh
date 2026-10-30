@@ -67,12 +67,18 @@ export function shouldMarkModelRoutedViaMagpie(input: {
 }
 
 export function readMagpieGatewayUrlFromInstanceEnvironment(
-  environment: ReadonlyArray<{ readonly name: string; readonly value: string }> | undefined,
+  environment:
+    | ReadonlyArray<{
+        readonly name: string;
+        readonly value: string | { readonly reference: string };
+      }>
+    | undefined,
 ): string | undefined {
   if (!environment) return undefined;
   for (const name of MAGPIE_GATEWAY_ENV_VARS) {
     const match = environment.find((entry) => entry.name === name);
-    if (match && isMagpieGatewayUrl(match.value)) {
+    // Secret references have no readable value here; only literal URLs reveal the gateway.
+    if (match && typeof match.value === "string" && isMagpieGatewayUrl(match.value)) {
       return match.value.trim();
     }
   }
