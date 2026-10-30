@@ -1,0 +1,50 @@
+name: Sync health
+
+on:
+  schedule:
+    - cron: "47 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/sync-health.yml
+      - .github/scripts/check-sync-health.cjs
+      - .github/scripts/check-sync-health.test.cjs
+  workflow_run:
+    workflows: [Sync upstream and release, Release Windows desktop, CI]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: sync-health
+  cancel-in-progress: true
+
+jobs:
+  inspect:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.head_branch == github.event.repository.default_branch &&
+       github.event.workflow_run.event != 'pull_request' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout trusted inspector
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+
+      - name: Test health rules
+        run: node --test .github/scripts/check-sync-health.test.cjs
+
+      - name: Inspect sync, CI and release status
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { check } = require('./.github/scripts/check-sync-health.cjs');
+            await check({ github, context, core });
