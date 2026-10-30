@@ -1,11 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import {
   inferMagpieRoutingForInstanceModel,
   isMagpieGatewayUrl,
   isMagpieOpenAiCatalogModel,
   readMagpieGatewayUrlFromInstanceEnvironment,
   shouldMarkModelRoutedViaMagpie,
-} from "./magpieRouting";
+} from "./magpieRouting.ts";
 
 describe("isMagpieGatewayUrl", () => {
   it("recognizes magpie hostnames and the default local gateway port", () => {

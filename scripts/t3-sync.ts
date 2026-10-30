@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @effect-diagnostics nodeBuiltinImport:off
 // Pulls upstream into this fork and reports which UI strings need a translation.
 //
 // The build-time transform (apps/web/vite/localizeI18n.ts) handles the wrapping,
@@ -10,16 +11,15 @@ import * as NodeChildProcess from "node:child_process";
 
 const repoRoot = NodePath.resolve(import.meta.dirname, "..");
 
-function run(command, args, options = {}) {
+function run(command: string, args: ReadonlyArray<string>): void {
   const result = NodeChildProcess.spawnSync(command, args, {
     cwd: repoRoot,
-    stdio: options.capture ? ["ignore", "pipe", "inherit"] : "inherit",
+    stdio: "inherit",
     encoding: "utf8",
   });
-  if (result.status !== 0 && !options.allowFailure) {
+  if (result.status !== 0) {
     throw new Error(`${command} ${args.join(" ")} failed with ${result.status ?? "unknown"}`);
   }
-  return result.stdout ?? "";
 }
 
 async function readDictionaryKeys() {
@@ -27,46 +27,19 @@ async function readDictionaryKeys() {
     NodePath.join(repoRoot, "apps/web/src/i18n/zh-CN.ts"),
     "utf8",
   );
-  const keys = new Set();
+  const keys = new Set<string>();
   for (const match of source.matchAll(/^\s{2}(?:"((?:[^"\\]|\\.)*)"|([A-Za-z_$][\w$]*)):/gm)) {
     keys.add(match[1] === undefined ? match[2] : JSON.parse(`"${match[1]}"`));
   }
   return keys;
 }
 
-const step = (message) => NodeProcess.stdout.write(`\n▸ ${message}\n`);
+const step = (message: string) => NodeProcess.stdout.write(`\n▸ ${message}\n`);
 
-step("Fetching upstream");
-run("git", ["fetch", "upstream", "--tags"]);
-
-const behind = Number(
-  run("git", ["rev-list", "--count", "HEAD..upstream/main"], { capture: true }).trim() || "0",
-);
-if (behind === 0) {
-  NodeProcess.stdout.write("Already up to date with upstream.\n");
-} else {
-  step(`Merging ${behind} upstream commit${behind === 1 ? "" : "s"}`);
-  const merge = NodeChildProcess.spawnSync("git", ["merge", "upstream/main", "--no-edit"], {
-    cwd: repoRoot,
-    stdio: "inherit",
-  });
-  if (merge.status !== 0) {
-    NodeProcess.stderr.write(
-      [
-        "",
-        "Merge stopped with conflicts. Resolve them, then run:",
-        "  git add -A && git commit && npm run t3:sync",
-        "",
-        "Files this fork owns usually conflict:",
-        "  apps/web/src/i18n/**            (keep ours)",
-        "  apps/web/vite/localizeI18n*.ts  (keep ours)",
-        "  apps/web/vite.config.ts         (keep ours: the plugin line)",
-        "Everything else: take upstream, the transform wraps it again at build time.",
-        "",
-      ].join("\n"),
-    );
-    NodeProcess.exit(1);
-  }
+if (!NodeProcess.argv.includes("--report-only")) {
+  step("Fetching upstream");
+  run("git", ["fetch", "upstream", "main", "--tags"]);
+  run("bash", ["scripts/sync-upstream.sh", "upstream/main"]);
 }
 
 step("Checking which UI strings still need a translation");
@@ -84,9 +57,9 @@ if (localizeModule === null) {
 }
 
 const sourceRoot = NodePath.join(repoRoot, "apps/web/src");
-const missing = new Set();
+const missing = new Set<string>();
 
-async function walk(directory) {
+async function walk(directory: string): Promise<void> {
   for (const entry of await NodeFSP.readdir(directory, { withFileTypes: true })) {
     if (entry.name.startsWith(".") || entry.name === "i18n") continue;
     const full = NodePath.join(directory, entry.name);

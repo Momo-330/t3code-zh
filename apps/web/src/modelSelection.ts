@@ -117,14 +117,16 @@ function withMagpieRoutingInference(
   option: AppModelOption,
 ): AppModelOption {
   const instanceUsesMagpieGateway = Boolean(
-    readMagpieGatewayUrlFromInstanceEnvironment(settings.providerInstances?.[instanceId]?.environment),
+    readMagpieGatewayUrlFromInstanceEnvironment(
+      settings.providerInstances?.[instanceId]?.environment,
+    ),
   );
   const routedViaMagpie = inferMagpieRoutingForInstanceModel({
     slug: option.slug,
     routedViaMagpie: option.routedViaMagpie,
     instanceUsesMagpieGateway,
   });
-  return routedViaMagpie === option.routedViaMagpie ? option : { ...option, routedViaMagpie };
+  return routedViaMagpie && !option.routedViaMagpie ? { ...option, routedViaMagpie } : option;
 }
 
 function readInstanceModelPreferences(

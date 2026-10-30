@@ -20,9 +20,9 @@ import { t } from "~/i18n";
 
 const platformName = (platform: DevicePlatform) => (platform === "ios" ? "iOS" : "Android");
 
-export const deviceHubDescription =
+const deviceHubDescription =
   "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.";
-export const agentDeviceDescription =
+const agentDeviceDescription =
   "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.";
 
 export const isAndroidDiscoveryUncertain = (state: DeviceServiceState) =>
@@ -58,7 +58,7 @@ function deviceHostDiagnostics(
   });
 }
 
-export function DeviceHostDiagnostics(props: {
+function DeviceHostDiagnostics(props: {
   readonly hosts: ReadonlyArray<Pick<DeviceServiceState["hosts"][number], "id" | "label">>;
   readonly hostStatuses: DeviceServiceState["hostStatuses"];
   readonly className?: string;
@@ -120,7 +120,7 @@ export function platformSetupStatus(state: DeviceServiceState, platform: DeviceP
     ready: true,
     message:
       remoteHost?.kind === "eas"
-        ? `${remoteHost.label} starts iOS Simulators in the cloud with EAS Simulator.`
+        ? `${remoteHost.label} starts ${platform === "ios" ? "iOS Simulators" : "Android emulators"} in the cloud with EAS Simulator.`
         : platform === "ios"
           ? `Xcode and iOS Simulator are available${location}.`
           : `The Android SDK and Emulator are available${location}.`,
@@ -361,7 +361,7 @@ export function AgentDeviceSetupStatus(props: {
   return null;
 }
 
-export function PlatformStatus(props: {
+function PlatformStatus(props: {
   readonly platform: string;
   readonly status: { readonly ready: boolean; readonly message: string };
   readonly compact?: boolean;

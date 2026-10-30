@@ -1,16 +1,16 @@
 name: Sync upstream and release
 
 # Keeps this fork about an hour behind pingdotgg/t3code, then publishes a
-# Chinese Windows build every four hours when a scheduled merge actually changed
-# something so the app's "Check for updates" has something new without shipping
+# Chinese Windows build every four hours when changes await release,
+# so the app's "Check for updates" has something new without shipping
 # a 160 MB release every hour.
 #
 # Upstream lands 100+ commits a day. Hourly merges keep conflicts small; the
 # publish gate (UTC hours 2, 6, 10, 14, 18, 22) reuses the newest merge since
 # the last release window.
 #
-# A merge conflict fails the run instead of guessing: this fork owns only the
-# dictionary and the transform, everything else takes upstream verbatim.
+# Workflow conflicts keep the fork's CI. Source conflicts stop the sync and
+# list the affected files in the job summary to protect fork-specific features.
 
 on:
   schedule:
@@ -45,6 +45,7 @@ jobs:
       changed: ${{ steps.merge.outputs.changed }}
       publish: ${{ steps.gate.outputs.publish }}
       version: ${{ steps.version.outputs.value }}
+      commit: ${{ steps.source.outputs.commit }}
       upstream-commit: ${{ steps.upstream.outputs.commit }}
       upstream-stable: ${{ steps.upstream.outputs.stable }}
       upstream-ahead: ${{ steps.upstream.outputs.ahead }}
@@ -69,70 +70,22 @@ jobs:
 
       - name: Merge upstream
         id: merge
-        run: |
-          behind=$(git rev-list --count HEAD..upstream/main)
-          echo "upstream commits behind: $behind"
-          if [[ "$behind" == "0" && "${{ inputs.force }}" != "true" ]]; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          before=$(git rev-parse HEAD)
-          if ! git merge upstream/main --no-edit -m "chore: sync upstream"; then
-            echo "::error::Merge conflict. Upstream touched files this fork edits."
-            git merge --abort || true
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            exit 1
-          fi
-
-          # GITHUB_TOKEN cannot push changes under .github/workflows, and one
-          # refused path rejects the whole push. Upstream's CI belongs to their
-          # release process (signing, EAS, nightly), not to this fork, so restore
-          # this branch's own workflow directory exactly as it was.
-          rm -rf .github/workflows
-          git checkout "$before" -- .github/workflows
-          git add -A .github/workflows
-          git diff --cached --quiet .github/workflows || git commit -q --amend --no-edit
-
-          echo "changed=true" >> "$GITHUB_OUTPUT"
+        run: bash scripts/sync-upstream.sh upstream/main
 
       - name: Push the merge
         if: steps.merge.outputs.changed == 'true'
-        run: |
-          # A manual push can land between checkout and here. Rebase the merge
-          # commit onto whatever origin has now instead of failing outright.
-          if ! git push origin HEAD:main; then
-            echo "push rejected; retrying on top of origin/main"
-            git fetch origin main
-            git rebase origin/main
-            git push origin HEAD:main
-          fi
+        # If main moved, fail without rewriting history; the next run starts fresh.
+        run: git push origin HEAD:main
+
+      - name: Record the merged source
+        id: source
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Decide whether to publish
         id: gate
-        run: |
-          # Manual force always publishes. Scheduled runs publish only in a
-          # release window (every four hours on a fixed UTC offset) and only
-          # when the merge step produced changes.
-          if [[ "${{ inputs.force }}" == "true" ]]; then
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [[ "${{ steps.merge.outputs.changed }}" != "true" ]]; then
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          hour=$(date -u +%H | sed 's/^0//')
-          if (( hour % RELEASE_HOUR_MOD == RELEASE_HOUR_OFFSET )); then
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-            next=$(( (hour / RELEASE_HOUR_MOD) * RELEASE_HOUR_MOD + RELEASE_HOUR_OFFSET ))
-            if (( next <= hour )); then next=$(( next + RELEASE_HOUR_MOD )); fi
-            if (( next >= 24 )); then next=$(( RELEASE_HOUR_OFFSET )); fi
-            printf -v next_h '%02d' "$next"
-            echo "Merged without publishing; the ${next_h}:17 UTC run may release."
-          fi
+        env:
+          FORCE_RELEASE: ${{ inputs.force }}
+        run: bash scripts/zh-release-needed.sh
 
       - name: Resolve the next version
         id: version
@@ -187,18 +140,25 @@ jobs:
           echo "ahead=$ahead" >> "$GITHUB_OUTPUT"
           echo "commit=$(git rev-parse --short upstream/main)" >> "$GITHUB_OUTPUT"
 
+      - name: Setup dependencies for translation coverage
+        if: steps.merge.outputs.changed == 'true'
+        continue-on-error: true
+        uses: ./.github/actions/setup-ci-deps
+        with:
+          install-args: --frozen-lockfile --filter @t3tools/web...
+
       - name: Report what needs translating
         if: steps.merge.outputs.changed == 'true'
         continue-on-error: true
         run: |
           # Lists untranslated strings in the job summary. The build still ships
           # with English fallbacks, so a missing translation never blocks a sync.
-          npm install --silent >/dev/null 2>&1 || true
-          npm run t3:sync > sync-report.txt 2>&1 || true
+          # Coverage reporting must not fetch, merge, or change the release source.
+          node scripts/t3-sync.ts --report-only > "$RUNNER_TEMP/sync-report.txt" 2>&1 || true
           {
             echo "### Untranslated strings"
             echo '```'
-            sed -n '/need a translation/,$p' sync-report.txt | head -200
+            sed -n '/need a translation/,$p' "$RUNNER_TEMP/sync-report.txt" | head -200
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -208,6 +168,7 @@ jobs:
     uses: ./.github/workflows/release-zh-windows.yml
     with:
       version: ${{ needs.sync.outputs.version }}
+      source-commit: ${{ needs.sync.outputs.commit }}
       upstream-commit: ${{ needs.sync.outputs.upstream-commit }}
       upstream-stable: ${{ needs.sync.outputs.upstream-stable }}
       upstream-ahead: ${{ needs.sync.outputs.upstream-ahead }}

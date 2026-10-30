@@ -17,6 +17,11 @@ on:
         description: "Version for this build"
         required: true
         type: string
+      source-commit:
+        description: "Exact merged source commit to build"
+        required: false
+        default: ""
+        type: string
       upstream-commit:
         description: "Upstream commit this build is based on"
         required: false
@@ -51,16 +56,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          ref: ${{ inputs.source-commit || github.sha }}
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Setup pinned Vite+ and dependencies
+        uses: ./.github/actions/setup-ci-deps
 
       - name: Resolve version
         id: version
@@ -88,6 +87,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: zh-v${{ steps.version.outputs.value }}
+          target_commitish: ${{ inputs.source-commit || github.sha }}
           name: "T3 Code 中文版 ${{ steps.version.outputs.value }}"
           body: |
             中文界面的 T3 Code 桌面端（个人 fork），仅包含 Windows 安装包。

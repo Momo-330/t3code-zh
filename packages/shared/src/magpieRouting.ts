@@ -30,7 +30,8 @@ export function isMagpieGatewayUrl(value: string | undefined | null): boolean {
   }
 
   const port = parsed.port || (parsed.protocol === "https:" ? "443" : "80");
-  const isLoopback = host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host === "::1";
+  const isLoopback =
+    host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host === "::1";
   if (isLoopback && port === MAGPIE_DEFAULT_GATEWAY_PORT) {
     return true;
   }
@@ -52,7 +53,7 @@ export function isMagpieOpenAiCatalogModel(raw: unknown): boolean {
 }
 
 export function shouldMarkModelRoutedViaMagpie(input: {
-  readonly baseUrl?: string | null;
+  readonly baseUrl?: string | null | undefined;
   readonly catalogModel?: unknown;
   readonly slug?: string;
 }): boolean {
@@ -81,7 +82,7 @@ export function readMagpieGatewayUrlFromInstanceEnvironment(
 /** Client-side fallback when discovery did not attach routedViaMagpie. */
 export function inferMagpieRoutingForInstanceModel(input: {
   readonly slug: string;
-  readonly routedViaMagpie?: boolean;
+  readonly routedViaMagpie?: boolean | undefined;
   readonly instanceUsesMagpieGateway: boolean;
 }): boolean {
   if (input.routedViaMagpie) {

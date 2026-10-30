@@ -28,6 +28,8 @@
         // These fixture scripts are injected into a browser page by path.
         "fixtures/*/*.js",
         "knip-schemas.ts",
+        // Manually invoked when migrating inline translations to the build transform.
+        "i18n-unwrap.mjs",
         "mobile-behavior/run.ts",
         "mobile-native-client.ts",
         "setup-worktree.ts",

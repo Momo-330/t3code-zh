@@ -3335,7 +3335,6 @@ export const zhCN: Readonly<Record<string, string>> = {
   "Couldn't search labels on the host": "无法在宿主上搜索标签",
   Count: "数量",
   Create: "创建",
-  'Create new ref "': "新建引用「",
   "Create one in Settings → Sharing & access, or run": "在「设置 → 共享与访问」中创建，或运行",
   "Create task": "创建任务",
   Creating: "正在创建",
@@ -3345,7 +3344,6 @@ export const zhCN: Readonly<Record<string, string>> = {
   Date: "日期",
   Day: "日",
   Days: "天",
-  'Delete action "': "删除动作「",
   "Delete branch": "删除分支",
   Deleting: "正在删除",
   "Deleting branch...": "正在删除分支…",
@@ -3483,7 +3481,6 @@ export const zhCN: Readonly<Record<string, string>> = {
     "部分工作区索引中不包含此文件夹的条目。",
   "No favorites yet": "还没有收藏",
   "no files": "无文件",
-  'No hosts match "': "没有匹配的主机「",
   "No ignored files to copy.": "没有可复制的被忽略文件。",
   "No labels found": "未找到标签",
   "No live descendant processes found.": "未找到活跃的子进程。",
@@ -3756,8 +3753,6 @@ export const zhCN: Readonly<Record<string, string>> = {
     "你随时可以通过导入其 JSON 文件恢复。",
   "You've reached your workspace's limit for using your ChatGPT plan in other apps. Copy a request to ask your workspace admin for increased usage limits.":
     "你已达到工作区在其他应用中使用 ChatGPT 套餐的上限。复制请求以向工作区管理员申请更高的用量上限。",
-  'Your prompt contains "ultrathink" in the text. Remove it to change this option.':
-    '你的提示中包含 "ultrathink"。移除它才能更改此选项。',
   "Your saved settings could not be loaded.": "无法加载你已保存的设置。",
   Zoom: "缩放",
 };

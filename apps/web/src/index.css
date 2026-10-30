@@ -175,6 +175,12 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
 }
 
 @theme inline {
+  --color-magpie-border: var(--color-violet-300);
+  --color-magpie-surface: var(--color-violet-100);
+  --color-magpie-foreground: var(--color-violet-900);
+  --color-magpie-border-dark: var(--color-violet-500);
+  --color-magpie-surface-dark: var(--color-violet-950);
+  --color-magpie-foreground-dark: var(--color-violet-200);
   /* Two steps below Tailwind's text-xs (12px) for dense UI: metadata rows,
      badges, counters, keyboard hints and diagnostics tables. 2xs is 11px,
      3xs is 10px. Provider icon overlays use 4xs (8px) and 5xs (7px) to fit
