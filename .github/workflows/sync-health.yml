@@ -32,19 +32,26 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Checkout trusted inspector
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.repository.default_branch }}
-          persist-credentials: false
-          sparse-checkout: .github/scripts
-
-      - name: Test health rules
-        run: node --test .github/scripts/check-sync-health.test.cjs
-
-      - name: Inspect sync, CI and release status
+      - name: Load trusted inspector, test rules and check status
         uses: actions/github-script@v8
         with:
           script: |
-            const { check } = require('./.github/scripts/check-sync-health.cjs');
+            const fs = require('node:fs');
+            const path = require('node:path');
+            const { execFileSync } = require('node:child_process');
+            const branch = context.payload.repository.default_branch;
+            const { data: head } = await github.rest.repos.getCommit({ ...context.repo, ref: branch });
+            const directory = fs.mkdtempSync(path.join(process.env.RUNNER_TEMP, 'sync-health-'));
+            for (const name of ['check-sync-health.cjs', 'check-sync-health.test.cjs']) {
+              const { data: file } = await github.rest.repos.getContent({
+                ...context.repo, path: `.github/scripts/${name}`, ref: head.sha,
+              });
+              if (file.type !== 'file' || file.encoding !== 'base64') {
+                throw new Error(`Cannot load trusted inspector: ${name}`);
+              }
+              fs.writeFileSync(path.join(directory, name), Buffer.from(file.content, 'base64'));
+            }
+            core.info(`Loaded health rules from ${head.sha}`);
+            execFileSync(process.execPath, ['--test', path.join(directory, 'check-sync-health.test.cjs')], { stdio: 'inherit' });
+            const { check } = require(path.join(directory, 'check-sync-health.cjs'));
             await check({ github, context, core });
