@@ -13,6 +13,13 @@ name: Sync upstream and release
 # list the affected files in the job summary to protect fork-specific features.
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/sync-zh.yml
+      - .github/workflows/release-zh-windows.yml
+      - scripts/sync-upstream.sh
+      - scripts/zh-release-needed.sh
   schedule:
     # Every hour at :17 UTC, off the hour so the job does not queue behind the busiest slot.
     - cron: "17 * * * *"
