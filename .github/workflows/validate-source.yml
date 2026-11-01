@@ -1,0 +1,52 @@
+name: Validate exact source
+
+on:
+  workflow_call:
+    inputs:
+      source-commit:
+        required: true
+        type: string
+    outputs:
+      source:
+        value: ${{ jobs.validate.outputs.source }}
+      ci-run:
+        value: ${{ jobs.validate.outputs.ci-run }}
+      validated:
+        value: ${{ jobs.validate.outputs.validated }}
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    concurrency:
+      group: exact-source-ci-${{ inputs.source-commit }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      actions: write
+    outputs:
+      source: ${{ steps.validate.outputs.source }}
+      ci-run: ${{ steps.validate.outputs.ci-run }}
+      validated: ${{ steps.validate.outputs.validated }}
+    steps:
+      - name: Validate the immutable source using CI
+        id: validate
+        uses: actions/github-script@v8
+        env:
+          SOURCE_COMMIT: ${{ inputs.source-commit }}
+        with:
+          script: |
+            const fs = require('node:fs');
+            const path = require('node:path');
+            const { execFileSync } = require('node:child_process');
+            const directory = fs.mkdtempSync(path.join(process.env.RUNNER_TEMP, 'source-ci-'));
+            for (const name of ['validate-source.cjs', 'validate-source.test.cjs']) {
+              const { data: file } = await github.rest.repos.getContent({
+                ...context.repo, path: `.github/scripts/${name}`, ref: context.sha,
+              });
+              if (file.type !== 'file' || file.encoding !== 'base64') throw new Error(`Cannot load ${name}`);
+              fs.writeFileSync(path.join(directory, name), Buffer.from(file.content, 'base64'));
+            }
+            execFileSync(process.execPath, ['--test', path.join(directory, 'validate-source.test.cjs')], { stdio: 'inherit' });
+            const { validate } = require(path.join(directory, 'validate-source.cjs'));
+            await validate({ github, context, core, source: process.env.SOURCE_COMMIT });

@@ -1,6 +1,8 @@
 # Automatic upstream conflict repair
 
-The normal hourly sync keeps the fork's workflows and merges clean upstream changes. When it fails with a source conflict, `Repair upstream conflicts` can start a coding agent, publish a candidate branch, run the existing full CI workflow against that exact commit, and promote it to `main` only after CI succeeds. The normal sync/release workflow is then dispatched again.
+The normal hourly sync keeps the fork's workflows and merges clean upstream changes. Its pinned source must pass CI before publishing, including when the release window is reached without another merge. When it fails with a source conflict, `Repair upstream conflicts` can start a coding agent, publish a candidate branch, run the existing full CI workflow against that exact commit, and promote it to `main` only after CI succeeds. The normal sync/release workflow is then dispatched again.
+
+`GITHUB_TOKEN` pushes do not start push-triggered CI. The shared source validator explicitly dispatches CI on a temporary branch pinned to the merged SHA, or waits for an existing CI run for that exact SHA. Successful validation can be reused; a different commit, a pull-request run, a failed run or a missing `Check` gate cannot authorize a release. Manual/tag Windows releases use the same validator. No additional secret is needed. The validator uses repository Actions write permission; CI jobs and installer builds do not receive it. The health inspector reads the current main SHA and reports missing validation as an error and running validation as pending, rather than reusing an older commit's green CI.
 
 This runs on GitHub-hosted machines. It does not wake an existing chat or reuse a ChatGPT session's login. Installation of the workflow does not supply model authorization.
 

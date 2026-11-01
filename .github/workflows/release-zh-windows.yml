@@ -49,14 +49,25 @@ permissions:
   contents: write
 
 jobs:
+  validate:
+    permissions:
+      contents: write
+      actions: write
+    uses: ./.github/workflows/validate-source.yml
+    with:
+      source-commit: ${{ inputs.source-commit || github.sha }}
+
   build:
+    needs: validate
+    permissions:
+      contents: write
     runs-on: windows-latest
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-          ref: ${{ inputs.source-commit || github.sha }}
+          ref: ${{ needs.validate.outputs.source }}
 
       - name: Setup pinned Vite+ and dependencies
         uses: ./.github/actions/setup-ci-deps
@@ -89,7 +100,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: zh-v${{ steps.version.outputs.value }}
-          target_commitish: ${{ inputs.source-commit || github.sha }}
+          target_commitish: ${{ needs.validate.outputs.source }}
           name: "T3 Code 中文版 ${{ steps.version.outputs.value }}"
           body: |
             中文界面的 T3 Code 桌面端（个人 fork），仅包含 Windows 安装包。
