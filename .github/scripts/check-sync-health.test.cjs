@@ -27,6 +27,7 @@ function fixture() {
     branch: "main",
     sync: workflow(30),
     ci: workflow(10),
+    repair: { ...workflow(120), runs: [run(120, { event: "workflow_run" })] },
     release: workflow(120),
     releasesUrl: "https://github.com/acme/app/releases",
     releases: [
@@ -63,6 +64,18 @@ test("reports a new sync conflict even though an older sync succeeded", () => {
   const report = assess(state, now);
   assert.equal(report.ok, false);
   assert.match(report.issues[0].message, /同步.*failure/);
+});
+
+test("tracks automatic repairs and only clears old failures after a successful sync", () => {
+  const state = fixture();
+  state.repair.runs = [run(2, { event: "workflow_run", conclusion: "failure" })];
+  assert.match(assess(state, now).issues[0].message, /修复.*failure/);
+  state.repair.runs.push(run(1, { event: "push" }));
+  assert.equal(assess(state, now).ok, false);
+  state.repair.runs = [run(120, { event: "workflow_run", conclusion: "failure" })];
+  assert.equal(assess(state, now).ok, true);
+  state.repair.runs = [run(91, { event: "workflow_run", status: "in_progress", conclusion: null })];
+  assert.match(assess(state, now).issues[0].message, /修复.*超过 90 分钟/);
 });
 
 test("allows a fresh retry after failure while its result is still pending", () => {
@@ -187,7 +200,12 @@ test("fails when GitHub timestamps cannot be evaluated", () => {
 function apiFixture(snapshot = fixture()) {
   const messages = [];
   const summary = [];
-  const labels = { "sync-zh.yml": "sync", "ci.yml": "ci", "release-zh-windows.yml": "release" };
+  const labels = {
+    "sync-zh.yml": "sync",
+    "ci.yml": "ci",
+    "release-zh-windows.yml": "release",
+    "repair-upstream.yml": "repair",
+  };
   return {
     messages,
     summary,

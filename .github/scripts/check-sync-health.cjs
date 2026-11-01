@@ -7,6 +7,12 @@ const workflows = [
   { key: "sync", file: "sync-zh.yml", label: "上游同步与自动发版", runningLimit: 150 * 60 * 1000 },
   { key: "ci", file: "ci.yml", label: "CI", runningLimit: 90 * 60 * 1000 },
   {
+    key: "repair",
+    file: "repair-upstream.yml",
+    label: "自动冲突修复",
+    runningLimit: 90 * 60 * 1000,
+  },
+  {
     key: "release",
     file: "release-zh-windows.yml",
     label: "手动 Windows 发版",
@@ -46,7 +52,10 @@ function assess(snapshot, now) {
             (policy.key === "release" &&
               run.event === "push" &&
               /^zh-v\d+\./.test(run.head_branch))) &&
-          ["push", "schedule", "workflow_dispatch"].includes(run.event),
+          (policy.key === "repair"
+            ? ["workflow_run", "workflow_dispatch"]
+            : ["push", "schedule", "workflow_dispatch"]
+          ).includes(run.event),
       )
       .toSorted((a, b) => timestamp(b.created_at) - timestamp(a.created_at));
     const latest = runs[0];
@@ -71,7 +80,17 @@ function assess(snapshot, now) {
       continue;
 
     if (latest.status === "completed") {
-      if (latest.conclusion !== "success")
+      const recovered =
+        policy.key === "repair" &&
+        snapshot.sync.runs.some(
+          (run) =>
+            run.head_branch === snapshot.branch &&
+            ["push", "schedule", "workflow_dispatch"].includes(run.event) &&
+            run.status === "completed" &&
+            run.conclusion === "success" &&
+            timestamp(run.updated_at) > timestamp(latest.updated_at),
+        );
+      if (latest.conclusion !== "success" && !recovered)
         issue("error", `${policy.label}最近一次运行未成功：${latest.conclusion}`, latest.html_url);
     } else if (latest.status === "in_progress") {
       if (now - timestamp(latest.run_started_at || latest.created_at) > policy.runningLimit) {

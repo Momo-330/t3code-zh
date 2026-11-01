@@ -11,7 +11,7 @@ on:
       - .github/scripts/check-sync-health.cjs
       - .github/scripts/check-sync-health.test.cjs
   workflow_run:
-    workflows: [Sync upstream and release, Release Windows desktop, CI]
+    workflows: [Sync upstream and release, Repair upstream conflicts, Release Windows desktop, CI]
     types: [completed]
 
 permissions:
