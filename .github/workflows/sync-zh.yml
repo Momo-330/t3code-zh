@@ -19,6 +19,9 @@ on:
       - .gitmodules
       - .github/workflows/sync-zh.yml
       - .github/workflows/release-zh-windows.yml
+      - .github/workflows/validate-source.yml
+      - .github/scripts/validate-source.cjs
+      - .github/scripts/validate-source.test.cjs
       - scripts/sync-upstream.sh
       - scripts/zh-release-needed.sh
   schedule:
@@ -170,13 +173,25 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-  release:
+  validate:
     needs: sync
-    if: needs.sync.outputs.publish == 'true'
+    permissions:
+      contents: write
+      actions: write
+    uses: ./.github/workflows/validate-source.yml
+    with:
+      source-commit: ${{ needs.sync.outputs.commit }}
+
+  release:
+    needs: [sync, validate]
+    if: needs.sync.outputs.publish == 'true' && needs.validate.outputs.validated == 'true'
+    permissions:
+      contents: write
+      actions: write
     uses: ./.github/workflows/release-zh-windows.yml
     with:
       version: ${{ needs.sync.outputs.version }}
-      source-commit: ${{ needs.sync.outputs.commit }}
+      source-commit: ${{ needs.validate.outputs.source }}
       upstream-commit: ${{ needs.sync.outputs.upstream-commit }}
       upstream-stable: ${{ needs.sync.outputs.upstream-stable }}
       upstream-ahead: ${{ needs.sync.outputs.upstream-ahead }}

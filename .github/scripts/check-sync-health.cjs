@@ -2,9 +2,10 @@ const HOUR = 60 * 60 * 1000;
 const QUEUE_LIMIT = 90 * 60 * 1000;
 const SYNC_GAP_LIMIT = 6 * HOUR;
 const SUCCESS_GAP_LIMIT = 12 * HOUR;
+const { sourceRuns } = require("./validate-source.cjs");
 
 const workflows = [
-  { key: "sync", file: "sync-zh.yml", label: "上游同步与自动发版", runningLimit: 150 * 60 * 1000 },
+  { key: "sync", file: "sync-zh.yml", label: "上游同步与自动发版", runningLimit: 180 * 60 * 1000 },
   { key: "ci", file: "ci.yml", label: "CI", runningLimit: 90 * 60 * 1000 },
   {
     key: "repair",
@@ -37,6 +38,7 @@ function publishedRelease(releases) {
 function assess(snapshot, now) {
   const issues = [];
   const rows = [];
+  let validated = false;
   const release = publishedRelease(snapshot.releases);
   const issue = (level, message, url) => issues.push({ level, message, url });
 
@@ -45,25 +47,38 @@ function assess(snapshot, now) {
     if (workflow.state !== "active") {
       issue("error", `${policy.label}工作流未启用：${workflow.state}`, workflow.html_url);
     }
-    const runs = workflow.runs
-      .filter(
-        (run) =>
-          (run.head_branch === snapshot.branch ||
-            (policy.key === "release" &&
-              run.event === "push" &&
-              /^zh-v\d+\./.test(run.head_branch))) &&
-          (policy.key !== "repair" || run.conclusion !== "skipped") &&
-          (policy.key === "repair"
-            ? ["workflow_run", "workflow_dispatch"]
-            : ["push", "schedule", "workflow_dispatch"]
-          ).includes(run.event),
-      )
-      .toSorted((a, b) => timestamp(b.created_at) - timestamp(a.created_at));
+    const runs =
+      policy.key === "ci"
+        ? sourceRuns(workflow.runs, {
+            source: snapshot.sha,
+            branch: snapshot.branch,
+            repository: snapshot.repository,
+          })
+        : workflow.runs
+            .filter(
+              (run) =>
+                (run.head_branch === snapshot.branch ||
+                  (policy.key === "release" &&
+                    run.event === "push" &&
+                    /^zh-v\d+\./.test(run.head_branch))) &&
+                (policy.key !== "repair" || run.conclusion !== "skipped") &&
+                (policy.key === "repair"
+                  ? ["workflow_run", "workflow_dispatch"]
+                  : ["push", "schedule", "workflow_dispatch"]
+                ).includes(run.event),
+            )
+            .toSorted((a, b) => timestamp(b.created_at) - timestamp(a.created_at));
     const latest = runs[0];
     if (!latest) {
       rows.push({ label: policy.label, value: "没有运行记录", url: workflow.html_url });
       if (policy.key === "sync")
         issue("error", "同步工作流没有主分支运行记录。", workflow.html_url);
+      if (policy.key === "ci")
+        issue(
+          "error",
+          `当前主分支 ${snapshot.sha} 没有匹配提交的 CI 验证记录。`,
+          workflow.html_url,
+        );
       continue;
     }
     rows.push({
@@ -71,6 +86,8 @@ function assess(snapshot, now) {
       value: latest.status === "completed" ? latest.conclusion : latest.status,
       url: latest.html_url,
     });
+    if (policy.key === "ci")
+      validated = latest.status === "completed" && latest.conclusion === "success";
 
     // A later published release supersedes an old failed manual release.
     if (
@@ -145,14 +162,17 @@ function assess(snapshot, now) {
       );
     }
   }
-  return { ok: !issues.some((item) => item.level === "error"), issues, rows };
+  return { ok: !issues.some((item) => item.level === "error"), validated, issues, rows };
 }
 
 async function check({ github, context, core, now = Date.now() }) {
   const branch = context.payload.repository?.default_branch;
   if (!branch) throw new Error("GitHub 未提供默认分支，无法核对同步状态。");
+  const { data: head } = await github.rest.repos.getCommit({ ...context.repo, ref: branch });
   const snapshot = {
     branch,
+    sha: head.sha,
+    repository: `${context.repo.owner}/${context.repo.repo}`,
     releasesUrl: `https://github.com/${context.repo.owner}/${context.repo.repo}/releases`,
   };
   await Promise.all(
@@ -162,7 +182,11 @@ async function check({ github, context, core, now = Date.now() }) {
         github.rest.actions.listWorkflowRuns({
           ...context.repo,
           workflow_id: policy.file,
-          ...(policy.key === "release" ? {} : { branch }),
+          ...(policy.key === "ci"
+            ? { head_sha: snapshot.sha }
+            : policy.key === "release"
+              ? {}
+              : { branch }),
           per_page: 100,
         }),
       ]);
@@ -190,8 +214,15 @@ async function check({ github, context, core, now = Date.now() }) {
     dateStyle: "short",
     timeStyle: "medium",
   }).format(new Date(now));
-  core.summary.addHeading(report.ok ? "同步巡检：正常" : "同步巡检：需要处理");
+  core.summary.addHeading(
+    report.ok
+      ? report.validated
+        ? "同步巡检：正常"
+        : "同步巡检：待 CI 验证"
+      : "同步巡检：需要处理",
+  );
   core.summary.addRaw(`检查时间（北京时间）：${observedAt}\n\n`);
+  core.summary.addRaw(`当前主分支提交：\`${snapshot.sha}\`\n\n`);
   core.summary.addRaw("| 项目 | 状态 |\n| --- | --- |\n");
   for (const row of report.rows)
     core.summary.addRaw(`| ${link(row.url, row.label)} | ${escape(row.value)} |\n`);
@@ -206,7 +237,8 @@ async function check({ github, context, core, now = Date.now() }) {
     "\n此任务只检查状态，不修改代码、重跑发布或调用 AI。GitHub 定时执行可能延迟。\n",
   );
   await core.summary.write();
-  core.setOutput("healthy", String(report.ok));
+  core.setOutput("healthy", String(report.ok && report.validated));
+  core.setOutput("validated", String(report.validated));
   if (!report.ok) core.setFailed("发现同步、CI 或发布异常，详情见本次运行摘要。");
   return report;
 }

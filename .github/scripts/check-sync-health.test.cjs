@@ -4,10 +4,13 @@ const { assess, check } = require("./check-sync-health.cjs");
 
 const now = Date.parse("2026-10-30T03:00:00Z");
 const minute = 60 * 1000;
+const source = "1".repeat(40);
 const ago = (minutes) => new Date(now - minutes * minute).toISOString();
 const run = (minutes, overrides = {}) => ({
   head_branch: "main",
-  event: "schedule",
+  head_sha: source,
+  head_repository: { full_name: "acme/app" },
+  event: "push",
   status: "completed",
   conclusion: "success",
   created_at: ago(minutes),
@@ -25,6 +28,8 @@ function fixture() {
   });
   return {
     branch: "main",
+    sha: source,
+    repository: "acme/app",
     sync: workflow(30),
     ci: workflow(10),
     repair: { ...workflow(120), runs: [run(120, { event: "workflow_run" })] },
@@ -49,6 +54,21 @@ test("accepts healthy sync, CI and uploaded Windows update assets", () => {
   const report = assess(fixture(), now);
   assert.equal(report.ok, true);
   assert.deepEqual(report.issues, []);
+});
+
+test("requires CI for the current main SHA and accepts its pinned validation branch", () => {
+  const state = fixture();
+  state.ci.runs[0].head_sha = "2".repeat(40);
+  assert.equal(assess(state, now).ok, false);
+  state.ci.runs.push(
+    run(5, {
+      event: "workflow_dispatch",
+      head_branch: `automation/source-ci/${source}`,
+    }),
+  );
+  assert.equal(assess(state, now).ok, true);
+  state.ci.runs[1].head_repository.full_name = "other/app";
+  assert.equal(assess(state, now).ok, false);
 });
 
 test("ignores failures and abandoned queues superseded by a newer successful run", () => {
@@ -96,10 +116,10 @@ test("distinguishes legitimate Windows build time from an overlong running workf
   const state = fixture();
   state.sync.runs = [run(120, { status: "in_progress", conclusion: null })];
   assert.equal(assess(state, now).ok, true);
-  state.sync.runs = [run(151, { status: "in_progress", conclusion: null })];
+  state.sync.runs = [run(181, { status: "in_progress", conclusion: null })];
   const report = assess(state, now);
   assert.equal(report.ok, false);
-  assert.match(report.issues[0].message, /150 分钟/);
+  assert.match(report.issues[0].message, /180 分钟/);
 });
 
 test("flags long queues using creation time rather than a later status update", () => {
@@ -224,12 +244,19 @@ function apiFixture(snapshot = fixture()) {
         rest: {
           actions: {
             getWorkflow: async ({ workflow_id }) => ({ data: snapshot[labels[workflow_id]] }),
-            listWorkflowRuns: async ({ workflow_id, branch }) => {
-              assert.equal(branch, workflow_id === "release-zh-windows.yml" ? undefined : "main");
+            listWorkflowRuns: async ({ workflow_id, branch, head_sha }) => {
+              assert.equal(
+                branch,
+                ["release-zh-windows.yml", "ci.yml"].includes(workflow_id) ? undefined : "main",
+              );
+              assert.equal(head_sha, workflow_id === "ci.yml" ? snapshot.sha : undefined);
               return { data: { workflow_runs: snapshot[labels[workflow_id]].runs } };
             },
           },
-          repos: { listReleases: () => {} },
+          repos: {
+            listReleases: () => {},
+            getCommit: async () => ({ data: { sha: snapshot.sha } }),
+          },
         },
         paginate: async () => snapshot.releases,
       },
@@ -263,6 +290,17 @@ test("marks the inspection failed when the latest CI is broken", async () => {
   const { options, messages } = apiFixture(state);
   await check(options);
   assert.ok(messages.some(([key]) => key === "failed"));
+});
+
+test("reports current CI in progress without labelling the source healthy", async () => {
+  const state = fixture();
+  state.ci.runs = [run(2, { status: "in_progress", conclusion: null })];
+  const { options, messages, summary } = apiFixture(state);
+  const report = await check(options);
+  assert.equal(report.ok, true);
+  assert.equal(report.validated, false);
+  assert.ok(messages.some(([key, value]) => key === "healthy" && value === "false"));
+  assert.match(summary.join(""), /待 CI/);
 });
 
 test("API failures cannot be reported as a healthy environment", async () => {
