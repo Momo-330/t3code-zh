@@ -72,7 +72,12 @@ test("tracks automatic repairs and only clears old failures after a successful s
   assert.match(assess(state, now).issues[0].message, /修复.*failure/);
   state.repair.runs.push(run(1, { event: "push" }));
   assert.equal(assess(state, now).ok, false);
+  state.repair.runs.push(run(1, { event: "workflow_run", conclusion: "skipped" }));
+  assert.match(assess(state, now).issues[0].message, /修复.*failure/);
   state.repair.runs = [run(120, { event: "workflow_run", conclusion: "failure" })];
+  state.repair.runs.push(run(1, { event: "workflow_run", conclusion: "skipped" }));
+  assert.equal(assess(state, now).ok, true);
+  state.repair.runs = [run(1, { event: "workflow_run", conclusion: "skipped" })];
   assert.equal(assess(state, now).ok, true);
   state.repair.runs = [run(91, { event: "workflow_run", status: "in_progress", conclusion: null })];
   assert.match(assess(state, now).issues[0].message, /修复.*超过 90 分钟/);

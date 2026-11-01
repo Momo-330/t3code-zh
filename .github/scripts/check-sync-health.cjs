@@ -52,6 +52,7 @@ function assess(snapshot, now) {
             (policy.key === "release" &&
               run.event === "push" &&
               /^zh-v\d+\./.test(run.head_branch))) &&
+          (policy.key !== "repair" || run.conclusion !== "skipped") &&
           (policy.key === "repair"
             ? ["workflow_run", "workflow_dispatch"]
             : ["push", "schedule", "workflow_dispatch"]
