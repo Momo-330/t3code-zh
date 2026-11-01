@@ -16,6 +16,7 @@ on:
   push:
     branches: [main]
     paths:
+      - .gitmodules
       - .github/workflows/sync-zh.yml
       - .github/workflows/release-zh-windows.yml
       - scripts/sync-upstream.sh

@@ -50,6 +50,7 @@ jobs:
           fetch-depth: 2
           sparse-checkout: |
             /pnpm-workspace.yaml
+            /.gitmodules
             /.github/scripts/ci-changes.cjs
             /.github/actions/ci-changes/
             /*/package.json

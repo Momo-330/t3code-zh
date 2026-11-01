@@ -84,7 +84,7 @@ jobs:
             core.setOutput('base', context.sha);
             core.setOutput('fresh', head.sha === context.sha ? 'true' : 'false');
             const directory = fs.mkdtempSync(path.join(process.env.RUNNER_TEMP, 'repair-tests-'));
-            for (const file of ['.github/scripts/upstream-repair.cjs', '.github/scripts/upstream-repair.test.cjs', '.github/scripts/magpie-repair.cjs', '.github/scripts/magpie-repair.test.cjs', 'scripts/sync-upstream.sh']) {
+            for (const file of ['.gitmodules', '.github/scripts/upstream-repair.cjs', '.github/scripts/upstream-repair.test.cjs', '.github/scripts/magpie-repair.cjs', '.github/scripts/magpie-repair.test.cjs', 'scripts/sync-upstream.sh']) {
               const { data } = await github.rest.repos.getContent({ ...context.repo, path: file, ref: context.sha });
               if (data.type !== 'file' || data.encoding !== 'base64') throw new Error(`Cannot load ${file}`);
               const destination = path.join(directory, file);

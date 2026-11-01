@@ -8,6 +8,31 @@ const { prepare, exportResolution, materialize, promote } = require("./upstream-
 
 const syncScript = path.resolve(__dirname, "../../scripts/sync-upstream.sh");
 
+test("checkout auth cleanup can traverse vendored gitlinks without initializing them", (t) => {
+  const f = fixture(t);
+  for (const name of ["distilled", "floci"]) {
+    f.git(
+      f.repo,
+      "update-index",
+      "--add",
+      "--cacheinfo",
+      "160000",
+      f.common,
+      `.repos/alchemy-effect/submodules/${name}`,
+    );
+  }
+  assert.throws(
+    () => f.git(f.repo, "submodule", "foreach", "--recursive", "true"),
+    /No url found for submodule path/,
+  );
+  f.write(".gitmodules", fs.readFileSync(path.resolve(__dirname, "../../.gitmodules"), "utf8"));
+  assert.equal(f.git(f.repo, "submodule", "foreach", "--recursive", "true"), "");
+  f.git(f.repo, "add", ".gitmodules");
+  f.git(f.repo, "commit", "-m", "register vendored gitlinks");
+  f.git(f.repo, "sparse-checkout", "set", "--no-cone", "/*", "!/.repos/");
+  assert.equal(f.git(f.repo, "submodule", "foreach", "--recursive", "true"), "");
+});
+
 function fixture(t, conflictFile = "app.txt") {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "upstream-repair-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));

@@ -1,6 +1,52 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { configuration, executionEnvironment, completed } = require("./magpie-repair.cjs");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+const { execFileSync, spawnSync } = require("node:child_process");
+const {
+  configuration,
+  executionEnvironment,
+  completed,
+  mergeContext,
+} = require("./magpie-repair.cjs");
+
+test("large files with small conflicts fit the context budget and retain deletion stages", (t) => {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), "magpie-context-"));
+  t.after(() => fs.rmSync(repo, { recursive: true, force: true }));
+  const git = (...args) =>
+    execFileSync("git", args, { cwd: repo, encoding: "utf8", stdio: "pipe" });
+  const write = (name, text) => fs.writeFileSync(path.join(repo, name), text);
+  const surrounding = Array.from({ length: 10000 }, (_, i) => `unchanged line ${i}\n`).join("");
+  git("init", "-b", "main");
+  git("config", "user.name", "Context test");
+  git("config", "user.email", "context@example.invalid");
+  git("config", "commit.gpgsign", "false");
+  write("large.ts", `${surrounding}base\n`);
+  write("deleted.ts", "base\n");
+  git("add", ".");
+  git("commit", "-m", "base");
+  git("checkout", "-b", "upstream");
+  write("large.ts", `${surrounding}upstream behavior\n`);
+  git("rm", "deleted.ts");
+  git("add", ".");
+  git("commit", "-m", "upstream");
+  git("checkout", "main");
+  write("large.ts", `${surrounding}fork localization\n`);
+  write("deleted.ts", "fork feature\n");
+  git("add", ".");
+  git("commit", "-m", "fork");
+  assert.equal(spawnSync("git", ["merge", "upstream"], { cwd: repo }).status, 1);
+  const context = mergeContext(["large.ts", "deleted.ts"], repo);
+  assert.ok(Buffer.byteLength(context) < 4096);
+  assert.match(context, /upstream behavior/);
+  assert.match(context, /fork localization/);
+  const deleted = JSON.parse(context).find((entry) => entry.path === "deleted.ts");
+  assert.match(deleted.unmerged, / 2\tdeleted.ts/);
+  assert.doesNotMatch(deleted.unmerged, / 3\tdeleted.ts/);
+  write("large.ts", "conflict\n".repeat(20000));
+  assert.throws(() => mergeContext(["large.ts"], repo), /context budget/);
+});
 
 test("Magpie presets use the supplied official endpoints and Flash models", () => {
   for (const [provider, url, model] of [

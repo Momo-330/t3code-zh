@@ -1,0 +1,9 @@
+# Git subtree retains these nested gitlinks; checkout cleanup needs root mappings.
+[submodule "alchemy-distilled"]
+	path = .repos/alchemy-effect/submodules/distilled
+	url = https://github.com/alchemy-run/distilled.git
+	update = none
+[submodule "alchemy-floci"]
+	path = .repos/alchemy-effect/submodules/floci
+	url = https://github.com/alchemy-run/floci.git
+	update = none
