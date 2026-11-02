@@ -10,6 +10,8 @@ on:
       - .github/workflows/sync-health.yml
       - .github/scripts/check-sync-health.cjs
       - .github/scripts/check-sync-health.test.cjs
+      - .github/scripts/release-policy.cjs
+      - .github/scripts/release-policy.test.cjs
       - .github/scripts/validate-source.cjs
       - .github/scripts/validate-source.test.cjs
   workflow_run:
@@ -46,7 +48,7 @@ jobs:
             const branch = context.payload.repository.default_branch;
             const { data: head } = await github.rest.repos.getCommit({ ...context.repo, ref: branch });
             const directory = fs.mkdtempSync(path.join(process.env.RUNNER_TEMP, 'sync-health-'));
-            for (const name of ['check-sync-health.cjs', 'check-sync-health.test.cjs', 'validate-source.cjs', 'validate-source.test.cjs']) {
+            for (const name of ['check-sync-health.cjs', 'check-sync-health.test.cjs', 'validate-source.cjs', 'validate-source.test.cjs', 'release-policy.cjs', 'release-policy.test.cjs']) {
               const { data: file } = await github.rest.repos.getContent({
                 ...context.repo, path: `.github/scripts/${name}`, ref: head.sha,
               });
@@ -56,6 +58,6 @@ jobs:
               fs.writeFileSync(path.join(directory, name), Buffer.from(file.content, 'base64'));
             }
             core.info(`Loaded health rules from ${head.sha}`);
-            execFileSync(process.execPath, ['--test', path.join(directory, 'check-sync-health.test.cjs'), path.join(directory, 'validate-source.test.cjs')], { stdio: 'inherit' });
+            execFileSync(process.execPath, ['--test', path.join(directory, 'check-sync-health.test.cjs'), path.join(directory, 'validate-source.test.cjs'), path.join(directory, 'release-policy.test.cjs')], { stdio: 'inherit' });
             const { check } = require(path.join(directory, 'check-sync-health.cjs'));
             await check({ github, context, core });

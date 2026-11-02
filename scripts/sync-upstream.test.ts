@@ -109,36 +109,3 @@ it("refuses to start a merge with existing local changes", () => {
   expect(f.git("rev-parse", "HEAD")).toBe(before);
   expect(NodeFS.readFileSync(NodePath.join(f.root, "app.txt"), "utf8")).toBe("uncommitted work\n");
 });
-
-it("releases pending updates from earlier runs and avoids rebuilding an already released commit", () => {
-  using f = fixture();
-  f.git("tag", "zh-v0.1.3-zh.5");
-  const gate = NodeURL.fileURLToPath(new URL("./zh-release-needed.sh", import.meta.url));
-  const check = (offset: number, force = "false") => {
-    NodeFS.writeFileSync(f.output, "");
-    const result = NodeChildProcess.spawnSync("bash", [gate], {
-      cwd: f.root,
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        GITHUB_OUTPUT: f.output,
-        RELEASE_HOUR_MOD: "1",
-        RELEASE_HOUR_OFFSET: String(offset),
-        FORCE_RELEASE: force,
-      },
-    });
-    expect(result.status, result.stderr).toBe(0);
-    return NodeFS.readFileSync(f.output, "utf8").trim();
-  };
-  expect(check(0)).toBe("publish=false");
-  expect(check(0, "true")).toBe("publish=true");
-  f.write("app.txt", "new update from an earlier sync\n");
-  f.git("add", "app.txt");
-  f.git("commit", "-m", "previous hourly sync");
-  expect(check(0)).toBe("publish=true");
-  expect(check(1)).toBe("publish=false");
-  f.git("tag", "zh-v0.1.3-zh.6");
-  expect(check(0)).toBe("publish=false");
-  f.git("tag", "-d", "zh-v0.1.3-zh.5", "zh-v0.1.3-zh.6");
-  expect(check(0)).toBe("publish=true");
-});

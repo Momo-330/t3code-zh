@@ -2,7 +2,9 @@ const HOUR = 60 * 60 * 1000;
 const QUEUE_LIMIT = 90 * 60 * 1000;
 const SYNC_GAP_LIMIT = 6 * HOUR;
 const SUCCESS_GAP_LIMIT = 12 * HOUR;
+const UPSTREAM_GAP_LIMIT = 2 * HOUR;
 const { sourceRuns } = require("./validate-source.cjs");
+const { publishedRelease, releasePlan } = require("./release-policy.cjs");
 
 const workflows = [
   { key: "sync", file: "sync-zh.yml", label: "上游同步与自动发版", runningLimit: 180 * 60 * 1000 },
@@ -27,18 +29,15 @@ function timestamp(value) {
   return result;
 }
 
-function publishedRelease(releases) {
-  return releases
-    .filter(
-      (release) => !release.draft && release.published_at && /^zh-v\d+\./.test(release.tag_name),
-    )
-    .toSorted((a, b) => timestamp(b.published_at) - timestamp(a.published_at))[0];
+function executionTime(run) {
+  return timestamp(run.run_started_at || run.created_at);
 }
 
 function assess(snapshot, now) {
   const issues = [];
   const rows = [];
   let validated = false;
+  const active = new Set();
   const release = publishedRelease(snapshot.releases);
   const issue = (level, message, url) => issues.push({ level, message, url });
 
@@ -67,7 +66,7 @@ function assess(snapshot, now) {
                   : ["push", "schedule", "workflow_dispatch"]
                 ).includes(run.event),
             )
-            .toSorted((a, b) => timestamp(b.created_at) - timestamp(a.created_at));
+            .toSorted((a, b) => executionTime(b) - executionTime(a));
     const latest = runs[0];
     if (!latest) {
       rows.push({ label: policy.label, value: "没有运行记录", url: workflow.html_url });
@@ -88,6 +87,7 @@ function assess(snapshot, now) {
     });
     if (policy.key === "ci")
       validated = latest.status === "completed" && latest.conclusion === "success";
+    if (latest.status !== "completed") active.add(policy.key);
 
     // A later published release supersedes an old failed manual release.
     if (
@@ -118,12 +118,15 @@ function assess(snapshot, now) {
           latest.html_url,
         );
       }
-    } else if (now - timestamp(latest.created_at) > QUEUE_LIMIT) {
+    } else if (
+      now - (latest.run_attempt > 1 ? executionTime(latest) : timestamp(latest.created_at)) >
+      QUEUE_LIMIT
+    ) {
       issue("error", `${policy.label}等待执行已超过 90 分钟：${latest.status}`, latest.html_url);
     }
 
     if (policy.key === "sync") {
-      if (now - timestamp(latest.created_at) > SYNC_GAP_LIMIT) {
+      if (now - executionTime(latest) > SYNC_GAP_LIMIT) {
         issue(
           "error",
           "超过 6 小时没有新的同步任务，请检查定时触发或工作流是否被停用。",
@@ -139,6 +142,33 @@ function assess(snapshot, now) {
     }
   }
 
+  const upstream = snapshot.upstream;
+  if (
+    !upstream ||
+    !/^[a-f0-9]{40}$/.test(upstream.sha) ||
+    !Number.isInteger(upstream.ahead) ||
+    upstream.ahead < 0
+  )
+    throw new Error("无法核对上游提交状态。");
+  const upToDate = upstream.ahead === 0;
+  rows.push({
+    label: "上游同步覆盖",
+    value: upToDate
+      ? `已纳入 ${upstream.sha}`
+      : `还有 ${upstream.ahead} 个提交未合入（${upstream.sha}）`,
+    url: upstream.html_url,
+  });
+  if (!upToDate) {
+    const age = now - timestamp(upstream.oldestPendingAt);
+    if (age > UPSTREAM_GAP_LIMIT && !active.has("sync") && !active.has("repair"))
+      issue(
+        "error",
+        `上游还有 ${upstream.ahead} 个提交未合入，最早已等待超过 2 小时。`,
+        upstream.html_url,
+      );
+  }
+  let releasePending = true;
+  let releaseDue = true;
   if (!release) {
     issue("error", "尚未找到已发布的中文版版本。", snapshot.releasesUrl);
   } else {
@@ -151,18 +181,40 @@ function assess(snapshot, now) {
       issue("error", "最新中文版缺少已上传的 Windows 安装包。", release.html_url);
     if (!uploaded((name) => name === "latest.yml"))
       issue("error", "最新中文版缺少自动更新清单 latest.yml。", release.html_url);
-    if (
-      snapshot.comparison?.status === "ahead" &&
-      now - timestamp(release.published_at) > SUCCESS_GAP_LIMIT
-    ) {
+    const plan = releasePlan({
+      source: snapshot.sha,
+      release,
+      releasedCommit: snapshot.releaseCommit,
+      now,
+    });
+    releasePending = plan.pending;
+    releaseDue = plan.publish;
+    rows.push({ label: "发布提交", value: snapshot.releaseCommit, url: release.html_url });
+    rows.push({
+      label: "发布进度",
+      value: !plan.pending
+        ? "当前主分支已发布"
+        : plan.publish
+          ? "待发布，已到期"
+          : `待发布，最早 ${new Date(plan.dueAt).toISOString()}`,
+      url: release.html_url,
+    });
+    if (releaseDue && !active.has("sync") && !active.has("repair") && !active.has("release"))
       issue(
-        "warning",
-        "上次发版已超过 12 小时，主分支存在尚未发布的提交；请核对下一次发布窗口。",
+        "error",
+        "主分支存在尚未发布的提交，距上次成功发布已满 4 小时，发布已到期。",
         release.html_url,
       );
-    }
   }
-  return { ok: !issues.some((item) => item.level === "error"), validated, issues, rows };
+  return {
+    ok: !issues.some((item) => item.level === "error"),
+    validated,
+    upToDate,
+    releasePending,
+    releaseDue,
+    issues,
+    rows,
+  };
 }
 
 async function check({ github, context, core, now = Date.now() }) {
@@ -198,14 +250,26 @@ async function check({ github, context, core, now = Date.now() }) {
     per_page: 100,
   });
   const latest = publishedRelease(snapshot.releases);
-  if (latest && now - timestamp(latest.published_at) > SUCCESS_GAP_LIMIT) {
-    const { data } = await github.rest.repos.compareCommitsWithBasehead({
-      ...context.repo,
-      basehead: `${latest.tag_name}...${branch}`,
-      per_page: 1,
-    });
-    snapshot.comparison = data;
+  if (latest) {
+    const { data } = await github.rest.repos.getCommit({ ...context.repo, ref: latest.tag_name });
+    snapshot.releaseCommit = data.sha;
   }
+  const { data: upstream } = await github.rest.repos.getCommit({
+    owner: "pingdotgg",
+    repo: "t3code",
+    ref: "main",
+  });
+  const { data: comparison } = await github.rest.repos.compareCommitsWithBasehead({
+    ...context.repo,
+    basehead: `${snapshot.sha}...${upstream.sha}`,
+    per_page: 1,
+  });
+  snapshot.upstream = {
+    sha: upstream.sha,
+    ahead: comparison.ahead_by,
+    oldestPendingAt: comparison.commits?.[0]?.commit?.committer?.date,
+    html_url: comparison.html_url,
+  };
   const report = assess(snapshot, now);
   const escape = (value) => String(value).replace(/[|<>\r\n]/g, " ");
   const link = (url, label) => `[${escape(label)}](${url})`;
@@ -216,9 +280,13 @@ async function check({ github, context, core, now = Date.now() }) {
   }).format(new Date(now));
   core.summary.addHeading(
     report.ok
-      ? report.validated
-        ? "同步巡检：正常"
-        : "同步巡检：待 CI 验证"
+      ? !report.upToDate
+        ? "同步巡检：待同步上游"
+        : !report.validated
+          ? "同步巡检：待 CI 验证"
+          : report.releasePending
+            ? "同步巡检：待发布"
+            : "同步巡检：正常"
       : "同步巡检：需要处理",
   );
   core.summary.addRaw(`检查时间（北京时间）：${observedAt}\n\n`);
@@ -237,8 +305,13 @@ async function check({ github, context, core, now = Date.now() }) {
     "\n此任务只检查状态，不修改代码、重跑发布或调用 AI。GitHub 定时执行可能延迟。\n",
   );
   await core.summary.write();
-  core.setOutput("healthy", String(report.ok && report.validated));
+  core.setOutput(
+    "healthy",
+    String(report.ok && report.validated && report.upToDate && !report.releasePending),
+  );
   core.setOutput("validated", String(report.validated));
+  core.setOutput("up_to_date", String(report.upToDate));
+  core.setOutput("release_due", String(report.releaseDue));
   if (!report.ok) core.setFailed("发现同步、CI 或发布异常，详情见本次运行摘要。");
   return report;
 }

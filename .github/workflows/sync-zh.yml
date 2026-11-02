@@ -6,8 +6,8 @@ name: Sync upstream and release
 # a 160 MB release every hour.
 #
 # Upstream lands 100+ commits a day. Hourly merges keep conflicts small; the
-# publish gate (UTC hours 2, 6, 10, 14, 18, 22) reuses the newest merge since
-# the last release window.
+# publish gate waits at least four hours after the last successful release.
+# Delayed runs catch up when due instead of missing a fixed UTC hour.
 #
 # Workflow conflicts keep the fork's CI. Source conflicts stop the sync and
 # list the affected files in the job summary to protect fork-specific features.
@@ -24,6 +24,8 @@ on:
       - .github/scripts/validate-source.test.cjs
       - scripts/sync-upstream.sh
       - scripts/zh-release-needed.sh
+      - .github/scripts/release-policy.cjs
+      - .github/scripts/release-policy.test.cjs
   schedule:
     # Every hour at :17 UTC, off the hour so the job does not queue behind the busiest slot.
     - cron: "17 * * * *"
@@ -41,12 +43,6 @@ concurrency:
 
 permissions:
   contents: write
-
-env:
-  # Scheduled publish windows: UTC hours where hour % 4 == 2 (02/06/10/14/18/22 UTC;
-  # 10:17–06:17 Beijing). Other hourly runs merge only.
-  RELEASE_HOUR_MOD: "4"
-  RELEASE_HOUR_OFFSET: "2"
 
 jobs:
   sync:
@@ -97,6 +93,7 @@ jobs:
         id: gate
         env:
           FORCE_RELEASE: ${{ inputs.force }}
+          GH_TOKEN: ${{ github.token }}
         run: bash scripts/zh-release-needed.sh
 
       - name: Resolve the next version
