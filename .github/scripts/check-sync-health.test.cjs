@@ -64,10 +64,11 @@ test("accepts healthy sync, CI and uploaded Windows update assets", () => {
 
 test("detects overdue upstream commits despite recent successful CI and health activity", () => {
   const state = fixture();
+  state.sync.runs = [run(180)];
   state.upstream = {
     sha: "a".repeat(40),
     ahead: 8,
-    oldestPendingAt: ago(180),
+    oldestPendingAt: ago(10),
     html_url: "https://github.com/upstream/app/commits/main",
   };
   const report = assess(state, now);
@@ -364,10 +365,10 @@ test("reports current CI in progress without labelling the source healthy", asyn
   assert.match(summary.join(""), /待 CI/);
 });
 
-test("shows recent upstream lag as pending rather than healthy or overdue", async () => {
+test("fresh sync plus just-merged old commits is pending, not overdue", async () => {
   const state = fixture();
   state.upstream.ahead = 2;
-  state.upstream.oldestPendingAt = ago(20);
+  state.upstream.oldestPendingAt = ago(1440);
   const { options, messages, summary } = apiFixture(state);
   const report = await check(options);
   assert.equal(report.ok, true);
@@ -396,6 +397,9 @@ test("distinguishes pending publication cooldown and active recovery from overdu
   state.sync.runs[0].conclusion = "success";
   report = assess(state, now);
   assert.equal(report.ok, false);
+  assert.equal(report.issues.length, 1);
+  state.sync.runs = [run(180)];
+  report = assess(state, now);
   assert.equal(report.issues.length, 2);
 });
 

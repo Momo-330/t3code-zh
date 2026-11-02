@@ -2,7 +2,7 @@ const HOUR = 60 * 60 * 1000;
 const QUEUE_LIMIT = 90 * 60 * 1000;
 const SYNC_GAP_LIMIT = 6 * HOUR;
 const SUCCESS_GAP_LIMIT = 12 * HOUR;
-const UPSTREAM_GAP_LIMIT = 2 * HOUR;
+const PENDING_SYNC_GAP_LIMIT = 2 * HOUR;
 const { sourceRuns } = require("./validate-source.cjs");
 const { publishedRelease, releasePlan } = require("./release-policy.cjs");
 
@@ -37,6 +37,7 @@ function assess(snapshot, now) {
   const issues = [];
   const rows = [];
   let validated = false;
+  let lastSuccessfulSync;
   const active = new Set();
   const release = publishedRelease(snapshot.releases);
   const issue = (level, message, url) => issues.push({ level, message, url });
@@ -136,6 +137,7 @@ function assess(snapshot, now) {
       const success = runs.find(
         (run) => run.status === "completed" && run.conclusion === "success",
       );
+      lastSuccessfulSync = success;
       if (success && now - timestamp(success.updated_at) > SUCCESS_GAP_LIMIT) {
         issue("error", "超过 12 小时没有成功完成同步，近期重试仍未恢复。", latest.html_url);
       }
@@ -158,12 +160,12 @@ function assess(snapshot, now) {
       : `还有 ${upstream.ahead} 个提交未合入（${upstream.sha}）`,
     url: upstream.html_url,
   });
-  if (!upToDate) {
-    const age = now - timestamp(upstream.oldestPendingAt);
-    if (age > UPSTREAM_GAP_LIMIT && !active.has("sync") && !active.has("repair"))
+  if (!upToDate && !active.has("sync") && !active.has("repair")) {
+    // Commit dates do not tell us when a commit entered upstream main.
+    if (!lastSuccessfulSync || now - executionTime(lastSuccessfulSync) > PENDING_SYNC_GAP_LIMIT)
       issue(
         "error",
-        `上游还有 ${upstream.ahead} 个提交未合入，最早已等待超过 2 小时。`,
+        `上游还有 ${upstream.ahead} 个提交未合入，${lastSuccessfulSync ? "上次成功同步启动距今已超过 2 小时" : "尚无成功同步记录"}。`,
         upstream.html_url,
       );
   }
@@ -267,7 +269,6 @@ async function check({ github, context, core, now = Date.now() }) {
   snapshot.upstream = {
     sha: upstream.sha,
     ahead: comparison.ahead_by,
-    oldestPendingAt: comparison.commits?.[0]?.commit?.committer?.date,
     html_url: comparison.html_url,
   };
   const report = assess(snapshot, now);
