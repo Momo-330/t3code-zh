@@ -30,6 +30,12 @@ function fixture() {
     branch: "main",
     sha: source,
     repository: "acme/app",
+    releaseCommit: source,
+    upstream: {
+      sha: "a".repeat(40),
+      ahead: 0,
+      html_url: "https://github.com/pingdotgg/t3code/commits/main",
+    },
     sync: workflow(30),
     ci: workflow(10),
     repair: { ...workflow(120), runs: [run(120, { event: "workflow_run" })] },
@@ -54,6 +60,40 @@ test("accepts healthy sync, CI and uploaded Windows update assets", () => {
   const report = assess(fixture(), now);
   assert.equal(report.ok, true);
   assert.deepEqual(report.issues, []);
+});
+
+test("detects overdue upstream commits despite recent successful CI and health activity", () => {
+  const state = fixture();
+  state.sync.runs = [run(180)];
+  state.upstream = {
+    sha: "a".repeat(40),
+    ahead: 8,
+    oldestPendingAt: ago(10),
+    html_url: "https://github.com/upstream/app/commits/main",
+  };
+  const report = assess(state, now);
+  assert.equal(report.upToDate, false);
+  assert.equal(report.ok, false);
+  assert.ok(report.issues.some((item) => /上游.*8.*2 小时/.test(item.message)));
+});
+
+test("detects a due unpublished main before the old twelve-hour release alarm", () => {
+  const state = fixture();
+  state.releaseCommit = "2".repeat(40);
+  state.releases[0].published_at = ago(300);
+  const report = assess(state, now);
+  assert.equal(report.ok, false);
+  assert.equal(report.releaseDue, true);
+  assert.ok(report.issues.some((item) => /发布.*到期/.test(item.message)));
+});
+
+test("uses the latest sync execution when an old workflow is rerun", () => {
+  const state = fixture();
+  state.sync.runs = [run(600, { run_started_at: ago(2), updated_at: ago(1) })];
+  assert.equal(assess(state, now).ok, true);
+  state.sync.runs[0].conclusion = "failure";
+  state.sync.runs.push(run(30));
+  assert.equal(assess(state, now).ok, false);
 });
 
 test("requires CI for the current main SHA and accepts its pinned validation branch", () => {
@@ -127,6 +167,10 @@ test("flags long queues using creation time rather than a later status update", 
   state.ci.runs = [run(91, { status: "queued", conclusion: null, updated_at: ago(1) })];
   assert.match(assess(state, now).issues[0].message, /等待执行.*90 分钟/);
   state.ci.runs = [run(89, { status: "queued", conclusion: null })];
+  assert.equal(assess(state, now).ok, true);
+  state.sync.runs = [
+    run(600, { run_attempt: 2, status: "queued", conclusion: null, run_started_at: ago(2) }),
+  ];
   assert.equal(assess(state, now).ok, true);
 });
 
@@ -203,16 +247,11 @@ test("rejects incomplete Windows releases and incomplete uploads", () => {
   assert.match(report.issues[0].message, /Windows 安装包/);
 });
 
-test("warns about old pending releases without marking quiet repositories as broken", () => {
+test("does not mark quiet repositories broken just because their release is old", () => {
   const state = fixture();
   state.releases[0].published_at = ago(1440);
   assert.equal(assess(state, now).issues.length, 0);
-  state.comparison = { status: "identical" };
-  assert.equal(assess(state, now).issues.length, 0);
-  state.comparison = { status: "ahead" };
-  const report = assess(state, now);
-  assert.equal(report.ok, true);
-  assert.equal(report.issues[0].level, "warning");
+  assert.equal(assess(state, now).releasePending, false);
 });
 
 test("fails when GitHub timestamps cannot be evaluated", () => {
@@ -255,7 +294,30 @@ function apiFixture(snapshot = fixture()) {
           },
           repos: {
             listReleases: () => {},
-            getCommit: async () => ({ data: { sha: snapshot.sha } }),
+            getCommit: async ({ owner, ref }) => ({
+              data: {
+                sha:
+                  owner === "pingdotgg"
+                    ? snapshot.upstream.sha
+                    : ref === "main"
+                      ? snapshot.sha
+                      : snapshot.releaseCommit,
+              },
+            }),
+            compareCommitsWithBasehead: async ({ basehead, per_page }) => {
+              assert.equal(basehead, `${snapshot.sha}...${snapshot.upstream.sha}`);
+              assert.equal(per_page, 1);
+              return {
+                data: {
+                  status: "diverged",
+                  ahead_by: snapshot.upstream.ahead,
+                  html_url: snapshot.upstream.html_url,
+                  commits: snapshot.upstream.ahead
+                    ? [{ commit: { committer: { date: snapshot.upstream.oldestPendingAt } } }]
+                    : [],
+                },
+              };
+            },
           },
         },
         paginate: async () => snapshot.releases,
@@ -301,6 +363,57 @@ test("reports current CI in progress without labelling the source healthy", asyn
   assert.equal(report.validated, false);
   assert.ok(messages.some(([key, value]) => key === "healthy" && value === "false"));
   assert.match(summary.join(""), /待 CI/);
+});
+
+test("fresh sync plus just-merged old commits is pending, not overdue", async () => {
+  const state = fixture();
+  state.upstream.ahead = 2;
+  state.upstream.oldestPendingAt = ago(1440);
+  const { options, messages, summary } = apiFixture(state);
+  const report = await check(options);
+  assert.equal(report.ok, true);
+  assert.equal(report.upToDate, false);
+  assert.ok(messages.some(([key, value]) => key === "healthy" && value === "false"));
+  assert.match(summary.join(""), /待同步上游/);
+});
+
+test("distinguishes pending publication cooldown and active recovery from overdue idle work", async () => {
+  const state = fixture();
+  state.releaseCommit = "2".repeat(40);
+  const { options, messages, summary } = apiFixture(state);
+  let report = await check(options);
+  assert.equal(report.ok, true);
+  assert.equal(report.releaseDue, false);
+  assert.ok(messages.some(([key, value]) => key === "healthy" && value === "false"));
+  assert.match(summary.join(""), /待发布/);
+  state.releases[0].published_at = ago(300);
+  state.upstream.ahead = 8;
+  state.upstream.oldestPendingAt = ago(180);
+  state.sync.runs = [run(5, { status: "in_progress", conclusion: null })];
+  report = assess(state, now);
+  assert.equal(report.ok, true);
+  assert.equal(report.releaseDue, true);
+  state.sync.runs[0].status = "completed";
+  state.sync.runs[0].conclusion = "success";
+  report = assess(state, now);
+  assert.equal(report.ok, false);
+  assert.equal(report.issues.length, 1);
+  state.sync.runs = [run(180)];
+  report = assess(state, now);
+  assert.equal(report.issues.length, 2);
+});
+
+test("missing upstream comparison or release tag resolution fails closed", async () => {
+  const { options, messages } = apiFixture();
+  options.github.rest.repos.compareCommitsWithBasehead = async () => ({ data: {} });
+  await assert.rejects(check(options), /上游/);
+  assert.ok(!messages.some(([key]) => key === "healthy"));
+  const fixture2 = apiFixture();
+  const getCommit = fixture2.options.github.rest.repos.getCommit;
+  fixture2.options.github.rest.repos.getCommit = async (args) =>
+    args.ref.startsWith("zh-v") ? { data: {} } : getCommit(args);
+  await assert.rejects(check(fixture2.options), /上游|resolve/);
+  assert.ok(!fixture2.messages.some(([key]) => key === "healthy"));
 });
 
 test("API failures cannot be reported as a healthy environment", async () => {
