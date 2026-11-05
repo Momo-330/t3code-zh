@@ -70,7 +70,7 @@ export const zhCN: Readonly<Record<string, string>> = {
   "Pro · up to": "Pro · 最多",
   "project name": "项目名称",
   "provider health interval": "提供商健康检查间隔",
-  "Provider variables on": "提供商变量（",
+  "Provider variables on": "提供商变量适用于",
   "Provider variables that read from": "读取以下内容的提供商变量",
   "Resets in": "重置倒计时",
   "restarts last": "最后一次重启",
