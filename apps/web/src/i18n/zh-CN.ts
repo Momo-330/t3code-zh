@@ -1,5 +1,82 @@
 export const zhCN: Readonly<Record<string, string>> = {
   Settings: "设置",
+  ", or leave it blank to add it later. A blank token uses the machine's":
+    "，也可以留空稍后添加。留空的令牌会使用该机器的",
+  ", so requests here use your own GitHub login and its lower rate limit.":
+    "，因此此处的请求会使用你自己的 GitHub 登录，并受其较低速率限制。",
+  ", then run:": "，然后运行：",
+  ", then select Refresh.": "，然后选择“刷新”。",
+  ": Settings → Connections → Create link, then paste its code here.":
+    "：设置 → 连接 → 创建链接，然后在此处粘贴代码。",
+  "1 machine still runs": "1 台机器仍在运行",
+  "active host power interval": "主机活跃耗电时段",
+  "Add color": "添加颜色",
+  "Agents here can then launch, message and wait on threads there. It appears in that environment's Connections, where it can be revoked.":
+    "此处的代理随后可以在那台机器上启动线程、发送消息并等待。它会显示在该环境的“连接”中，可在那里撤销。",
+  "Agents here can then launch, message and wait on threads there. Revoke it in that machine's Connections.":
+    "此处的代理随后可以在那台机器上启动线程、发送消息并等待。请在那台机器的“连接”中撤销它。",
+  "An agent never gets more access there than its own mode here. Below full access, it can change only threads this link started, not that machine's own threads, projects or settings.":
+    "代理在那台机器上的访问权限不会超过此处的权限模式。低于完全访问时，它只能更改由此链接启动的线程，不能更改那台机器自己的线程、项目或设置。",
+  "Approval needed from": "需要以下人员批准",
+  "Bring back": "恢复",
+  "clone into host folders": "克隆到主机文件夹中",
+  "Clone into host folders": "克隆到主机文件夹中",
+  "Close side chat": "关闭侧边聊天",
+  Commits: "提交",
+  "Compacting for": "压缩时长",
+  "Confirm on": "确认于",
+  "Context from": "上下文来自",
+  "Context window": "上下文窗口",
+  "Copy version": "复制版本",
+  "Create a link on": "在…创建链接",
+  "Delete side chat": "删除侧边聊天",
+  Destination: "目标位置",
+  "Duplicate request key": "重复的请求键",
+  "Each run continues this conversation, in its workspace and with its current model.":
+    "每次运行都会在其工作区中继续此对话，并使用当前模型。",
+  "Each selected environment's server leases devices from your Simlock gateway with its own agent token, and releases them when they close.":
+    "每个选定环境的服务器都会使用自己的代理令牌，从你的 Simlock 网关租用设备，并在关闭时释放设备。",
+  "effort display": "思考强度显示",
+  "fallback model": "备用模型",
+  "for more tunnels": "以创建更多隧道",
+  "Force stop": "强制停止",
+  "Get help": "获取帮助",
+  "idle host power interval": "主机空闲耗电时段",
+  "in the full diff": "在完整差异中",
+  "Install on": "安装到",
+  "isn't installed on": "未安装在",
+  "Leases, drives, and streams devices. Create one": "租用、控制并流式传输设备。创建一个",
+  "Let agents here work on your other machines, and theirs here. Turn it on for each machine, then link them in":
+    "允许此处的代理操作你的其他机器，也允许其他机器上的代理操作此处。为每台机器启用此功能，然后在…中建立链接",
+  "Let the Device panel lease simulators and emulators from your own": "让“设备”面板从你自己的",
+  "Maintainers can push to this branch. If your fork has workflows, this can also give access to its secrets.":
+    "维护者可以推送到此分支。如果你的 fork 配置了工作流，这也可能让工作流访问其密钥。",
+  "Menus offer only Custom…": "菜单中仅提供“自定义…”",
+  "more file": "个文件",
+  "New agent sessions can open and drive these devices. agent-device:":
+    "新的代理会话可以打开并控制这些设备。agent-device：",
+  "No effort levels": "没有思考强度选项",
+  "npx t3 pair --tailscale": "运行 `npx t3 pair --tailscale`",
+  "On a tailnet, run": "在 tailnet 上运行",
+  "On the computer with your code, start T3 Code or run": "在存放代码的电脑上启动 T3 Code，或运行",
+  Once: "一次",
+  "Open pull requests and changes panels proactively": "主动打开拉取请求和变更面板",
+  "Open simulators and emulators in the Device panel. Hub:":
+    "在“设备”面板中打开模拟器和仿真器。Hub：",
+  "or run": "或运行",
+  "per environment": "每个环境",
+  "Pin project": "固定项目",
+  "pool, added in": "资源池，添加于",
+  "Pro · up to": "Pro · 最多",
+  "project name": "项目名称",
+  "provider health interval": "提供商健康检查间隔",
+  "Provider variables on": "提供商变量在…时",
+  "Provider variables that read from": "读取以下内容的提供商变量",
+  "Resets in": "重置倒计时",
+  "restarts last": "最后一次重启",
+  "Run a prompt automatically on an interval, at a fixed time, once at a set date, or when a webhook is called.":
+    "按间隔、指定时间、设定日期，或通过 webhook 自动运行提示词。",
+  "Sending attachment": "正在发送附件",
   "Settings breadcrumb": "设置路径",
   Diagnostics: "诊断",
   Project: "项目",
@@ -10,6 +87,12 @@ export const zhCN: Readonly<Record<string, string>> = {
   Providers: "供应商",
   Integrations: "集成",
   "Scheduled tasks": "定时任务",
+  "Showing access for": "正在显示…的访问权限",
+  "Side chats": "侧边聊天",
+  Simlock: "Simlock",
+  "simlock --gateway token create --role agent":
+    "运行 `simlock --gateway token create --role agent`",
+  "snooze options": "稍后提醒选项",
   "Source control": "源代码管理",
   Storage: "存储",
   Connections: "连接",
@@ -19,6 +102,20 @@ export const zhCN: Readonly<Record<string, string>> = {
   Back: "返回",
   "Pull requests": "Pull Request",
   Usage: "用量",
+  "Started by an agent on": "由代理在…上启动",
+  "Subagent work": "子代理工作",
+  "T3 Code home": "T3 Code 主目录",
+  "The agent reads T3 Code's logs and source here, and asks before it applies a fix or posts anything.":
+    "代理会在此读取 T3 Code 的日志和源代码，并在应用修复或发布任何内容前征求确认。",
+  "The environment's server leases devices from your Simlock gateway and releases them when they close.":
+    "该环境的服务器通过你的 Simlock 网关租用设备，并在关闭时释放设备。",
+  "This app has no address for": "此应用没有…的地址",
+  "This doesn't change your T3 Connect account. To deregister it there, use":
+    "这不会更改你的 T3 Connect 账户。若要在那里注销，请使用",
+  "This environment is already linked to": "此环境已链接到",
+  "This environment is managed by": "此环境由…管理",
+  "thread details": "线程详情",
+  "to Premier for": "升级到 Premier，价格为",
   "Toggle main sidebar": "切换主侧栏",
   "Go to threads": "回到会话列表",
   "New thread": "新会话",
@@ -45,6 +142,9 @@ export const zhCN: Readonly<Record<string, string>> = {
   "Send feedback to decline this request": "发送反馈以拒绝此请求",
   "Send a message to decline and redirect the agent": "发送消息以拒绝并改派 agent",
   "Choose an option above": "在上方选择一项",
+  "tunnels in use": "条隧道正在使用",
+  "Type a URL above, or run a dev script. Local servers this thread starts will show up here automatically.":
+    "在上方输入 URL，或运行开发脚本。此线程启动的本地服务器会自动显示在这里。",
   "Type your own answer, or leave this blank to use the selected option":
     "输入自己的回答，或留空使用当前选项",
   "Add feedback to refine the plan, or leave this blank to implement it":
@@ -93,6 +193,10 @@ export const zhCN: Readonly<Record<string, string>> = {
   "Settings · {section}": "设置 · {section}",
   "Keep worktrees with local changes": "保留有本地改动的 worktree",
   "Delete now": "立即清理",
+  "Up to": "最多",
+  "Update T3 Code on": "更新此处的 T3 Code",
+  Value: "值",
+  "when its": "当它的…时",
   "Worktree cleanup": "Worktree 清理",
   "Worktree location": "Worktree 位置",
   "Artifacts and logs": "产物与日志",
@@ -532,6 +636,7 @@ export const zhCN: Readonly<Record<string, string>> = {
     "给 PR 加上 Guide 标签：agent 逐步讲解这次改动，并标出维护者该看的调用。",
   "Model that reads a pull request to write its review guide. It reads the change itself over many steps, so a stronger model helps. Off uses the source control writer model.":
     "阅读 PR 并写 review 指南的模型。它会分很多步读改动本身，更强的模型更有帮助。关闭则使用源代码管理文案模型。",
+  You: "你",
   "Your preferences for review guides: what to show first, dwell on, or skip. The guide's format and coverage stay the same.":
     "review 指南的偏好：先看什么、多停留什么、跳过什么。指南的格式和覆盖范围不变。",
   "Remove recognized agent credit lines from merge and squash messages on hosts that support it, keeping human co-authors. Includes auto-merge. Excludes merge queues, stack merges, and existing commits.":
@@ -3637,6 +3742,7 @@ export const zhCN: Readonly<Record<string, string>> = {
   "Sensitive, stored separately": "敏感信息，单独存储",
   "Separate fonts": "独立字体",
   Set: "设置",
+  "Setting up": "正在设置",
   "Setting up...": "正在设置…",
   Settle: "收起",
   Share: "共享",
