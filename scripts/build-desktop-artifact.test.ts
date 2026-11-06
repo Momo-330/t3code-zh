@@ -1315,6 +1315,38 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     ),
   );
 
+  it.effect("enforces the Windows packaged payload file budget at its boundary", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const fixture = yield* makeWindowsPayloadFixture({ copyUnpackedNatives: true });
+        const input = {
+          stageDistDir: fixture.stageDistDir,
+          appExecutableName: fixture.appExecutableName,
+          targetArch: "x64" as const,
+          appVersion: WINDOWS_PAYLOAD_FIXTURE_VERSION,
+        };
+        const initial = yield* validateWindowsPackagedPayload(input);
+
+        for (let index = initial.fileCount; index < WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT; index++) {
+          yield* fs.writeFileString(
+            path.join(fixture.packagedAppDir, `budget-${index}.txt`),
+            "budget",
+          );
+        }
+        const atLimit = yield* validateWindowsPackagedPayload(input);
+        assert.equal(atLimit.fileCount, WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT);
+
+        yield* fs.writeFileString(path.join(fixture.packagedAppDir, "over-budget.txt"), "over");
+        const error = yield* validateWindowsPackagedPayload(input).pipe(Effect.flip);
+        assert.instanceOf(error, WindowsPackagedPayloadValidationError);
+        assert.equal(error.reason, "file-limit-exceeded");
+        assert.equal(error.fileCount, WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT + 1);
+      }),
+    ).pipe(Effect.provideService(HostProcess.Platform, "linux")),
+  );
+
   it.effect("rejects a sidecar whose extracted server bundle cannot resolve", () =>
     Effect.scoped(
       Effect.gen(function* () {
