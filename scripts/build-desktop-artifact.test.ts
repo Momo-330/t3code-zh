@@ -1336,7 +1336,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         assert.equal(overLimit.reason, "file-limit-exceeded");
         assert.equal(overLimit.fileCount, WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT + 1);
       }),
-    ),
+    ).pipe(Effect.provideService(HostProcess.Platform, "linux")),
   );
 
   it.effect("rejects a sidecar whose extracted server bundle cannot resolve", () =>
