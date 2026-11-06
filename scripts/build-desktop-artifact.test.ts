@@ -1296,26 +1296,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     ),
   );
 
-  it.effect("rejects a Windows payload that regresses above the file-count budget", () =>
-    Effect.scoped(
-      Effect.gen(function* () {
-        const fixture = yield* makeWindowsPayloadFixture({ copyUnpackedNatives: true });
-        const error = yield* validateWindowsPackagedPayload({
-          stageDistDir: fixture.stageDistDir,
-          appExecutableName: fixture.appExecutableName,
-          targetArch: "x64",
-          appVersion: WINDOWS_PAYLOAD_FIXTURE_VERSION,
-          fileLimit: 2,
-        }).pipe(Effect.flip);
-
-        assert.instanceOf(error, WindowsPackagedPayloadValidationError);
-        assert.equal(error.reason, "file-limit-exceeded");
-        assert.isAbove(error.fileCount ?? 0, 2);
-      }),
-    ),
-  );
-
-  it.effect("enforces the Windows packaged payload file budget at its boundary", () =>
+  it.effect("enforces the Windows packaged payload file-count budget", () =>
     Effect.scoped(
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
@@ -1327,9 +1308,20 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
           targetArch: "x64" as const,
           appVersion: WINDOWS_PAYLOAD_FIXTURE_VERSION,
         };
-        const initial = yield* validateWindowsPackagedPayload(input);
+        const error = yield* validateWindowsPackagedPayload({
+          ...input,
+          fileLimit: 2,
+        }).pipe(Effect.flip);
 
-        for (let index = initial.fileCount; index < WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT; index++) {
+        assert.instanceOf(error, WindowsPackagedPayloadValidationError);
+        assert.equal(error.reason, "file-limit-exceeded");
+        assert.isAbove(error.fileCount ?? 0, 2);
+
+        for (
+          let index = error.fileCount ?? 0;
+          index < WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT;
+          index++
+        ) {
           yield* fs.writeFileString(
             path.join(fixture.packagedAppDir, `budget-${index}.txt`),
             "budget",
@@ -1339,12 +1331,12 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         assert.equal(atLimit.fileCount, WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT);
 
         yield* fs.writeFileString(path.join(fixture.packagedAppDir, "over-budget.txt"), "over");
-        const error = yield* validateWindowsPackagedPayload(input).pipe(Effect.flip);
-        assert.instanceOf(error, WindowsPackagedPayloadValidationError);
-        assert.equal(error.reason, "file-limit-exceeded");
-        assert.equal(error.fileCount, WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT + 1);
+        const overLimit = yield* validateWindowsPackagedPayload(input).pipe(Effect.flip);
+        assert.instanceOf(overLimit, WindowsPackagedPayloadValidationError);
+        assert.equal(overLimit.reason, "file-limit-exceeded");
+        assert.equal(overLimit.fileCount, WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT + 1);
       }),
-    ).pipe(Effect.provideService(HostProcess.Platform, "linux")),
+    ),
   );
 
   it.effect("rejects a sidecar whose extracted server bundle cannot resolve", () =>
