@@ -1296,23 +1296,47 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     ),
   );
 
-  it.effect("rejects a Windows payload that regresses above the file-count budget", () =>
+  it.effect("enforces the Windows packaged payload file-count budget", () =>
     Effect.scoped(
       Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
         const fixture = yield* makeWindowsPayloadFixture({ copyUnpackedNatives: true });
-        const error = yield* validateWindowsPackagedPayload({
+        const input = {
           stageDistDir: fixture.stageDistDir,
           appExecutableName: fixture.appExecutableName,
-          targetArch: "x64",
+          targetArch: "x64" as const,
           appVersion: WINDOWS_PAYLOAD_FIXTURE_VERSION,
+        };
+        const error = yield* validateWindowsPackagedPayload({
+          ...input,
           fileLimit: 2,
         }).pipe(Effect.flip);
 
         assert.instanceOf(error, WindowsPackagedPayloadValidationError);
         assert.equal(error.reason, "file-limit-exceeded");
         assert.isAbove(error.fileCount ?? 0, 2);
+
+        for (
+          let index = error.fileCount ?? 0;
+          index < WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT;
+          index++
+        ) {
+          yield* fs.writeFileString(
+            path.join(fixture.packagedAppDir, `budget-${index}.txt`),
+            "budget",
+          );
+        }
+        const atLimit = yield* validateWindowsPackagedPayload(input);
+        assert.equal(atLimit.fileCount, WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT);
+
+        yield* fs.writeFileString(path.join(fixture.packagedAppDir, "over-budget.txt"), "over");
+        const overLimit = yield* validateWindowsPackagedPayload(input).pipe(Effect.flip);
+        assert.instanceOf(overLimit, WindowsPackagedPayloadValidationError);
+        assert.equal(overLimit.reason, "file-limit-exceeded");
+        assert.equal(overLimit.fileCount, WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT + 1);
       }),
-    ),
+    ).pipe(Effect.provideService(HostProcess.Platform, "linux")),
   );
 
   it.effect("rejects a sidecar whose extracted server bundle cannot resolve", () =>
