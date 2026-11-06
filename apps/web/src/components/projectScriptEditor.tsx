@@ -29,6 +29,7 @@ import { keybindingFromKeyboardEvent } from "~/components/settings/KeybindingsSe
 import { commandForProjectScript, nextProjectScriptId } from "~/projectScripts";
 import { readEnvironmentScope, useEnvironmentScope } from "~/state/session";
 import { useComposerMenuState } from "./chat/useComposerMenuState";
+import { t } from "../i18n";
 import {
   AlertDialog,
   AlertDialogClose,
@@ -527,7 +528,7 @@ function ProjectScriptEditorForm({
               />
             </label>
             <label className="flex items-center justify-between gap-3 rounded-md border border-border/70 px-3 py-2 text-sm dark:border-transparent dark:bg-white/[0.035]">
-              <span>Stop this action when the thread settles</span>
+              <span>{t("Stop this action when the thread settles")}</span>
               <Switch
                 checked={stopOnSettle}
                 onCheckedChange={(checked) => setStopOnSettle(Boolean(checked))}
