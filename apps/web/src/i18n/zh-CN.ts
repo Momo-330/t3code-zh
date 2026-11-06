@@ -4175,4 +4175,8 @@ export const zhCN: Readonly<Record<string, string>> = {
   "Branch and pull request": "分支与 Pull Request",
   "Environment and worktree": "环境与 worktree",
   "Executable name or path on this environment.": "此环境上的可执行文件名或路径。",
+  "Hide the commands, edits, and searches agents run. Hide successful keeps failures. Zen shows only final answers. Approvals, questions, and errors always show.":
+    "隐藏代理执行的命令、编辑和搜索。隐藏成功执行的操作，仅显示失败项。Zen 模式仅显示最终答复。批准请求、问题和错误始终显示。",
+  "Share a thread with a guest who watches it live in a browser and sends messages you approve. Sign in to T3 Connect to use guest links.":
+    "与访客分享会话，对方可在浏览器中实时观看并发送消息供你审核。登录 T3 Connect 后即可使用访客链接。",
 };
