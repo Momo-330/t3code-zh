@@ -41,6 +41,7 @@ export function assertAcpTitledMultiSelectOutput(
       ],
       allowCustomAnswer: false,
       multiSelect: true,
+      minItems: 1,
     },
   ]);
 }
