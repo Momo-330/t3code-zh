@@ -44,4 +44,41 @@ describe("parseElicitationForm", () => {
       },
     );
   }
+
+  it("carries array selection bounds through the question contract", () => {
+    const form = parseElicitationForm(
+      {
+        type: "object",
+        properties: {
+          answer: {
+            type: "array",
+            minItems: 2,
+            maxItems: 2,
+            items: { type: "string", enum: ["first", "second", "third"] },
+          },
+        },
+        required: ["answer"],
+      },
+      "Choose two",
+    );
+    assert(form !== undefined);
+    assert.deepStrictEqual(form.questions[0], {
+      id: "answer",
+      header: "Question 1",
+      question: "Choose two",
+      options: [
+        { label: "first", description: "first", value: "first" },
+        { label: "second", description: "second", value: "second" },
+        { label: "third", description: "third", value: "third" },
+      ],
+      allowCustomAnswer: false,
+      multiSelect: true,
+      minItems: 2,
+      maxItems: 2,
+    });
+    assert.strictEqual(form.content({ answer: ["first"] }), undefined);
+    assert.deepStrictEqual(form.content({ answer: ["first", "second"] }), {
+      answer: ["first", "second"],
+    });
+  });
 });

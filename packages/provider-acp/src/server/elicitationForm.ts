@@ -204,6 +204,12 @@ export function parseElicitationForm(
         ? {}
         : { allowCustomAnswer: false }),
       ...(parsed.field.kind === "multiChoice" ? { multiSelect: true } : {}),
+      ...(parsed.field.kind === "multiChoice"
+        ? {
+            minItems: parsed.field.minItems,
+            ...(Number.isFinite(parsed.field.maxItems) ? { maxItems: parsed.field.maxItems } : {}),
+          }
+        : {}),
     });
   }
   return {

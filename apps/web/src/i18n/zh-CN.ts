@@ -3938,6 +3938,7 @@ export const zhCN: Readonly<Record<string, string>> = {
   "Or use your own credentials": "或使用自己的凭据",
   Personal: "个人",
   "Remove provider": "移除供应商",
+  "Remove connection": "移除连接",
   "Replay a recorded turn": "回放已记录的轮次",
   "Resize file explorer": "调整文件浏览器大小",
   "Return device to the pool": "将设备归还到池中",

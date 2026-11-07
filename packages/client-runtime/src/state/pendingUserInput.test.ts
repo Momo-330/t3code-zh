@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   buildPendingUserInputAnswers,
+  isPendingUserInputOptionDisabled,
   isPendingUserInputOptionSelected,
   resolvePendingUserInputAnswer,
   setPendingUserInputCustomAnswer,
@@ -32,6 +33,31 @@ const nativeChoiceQuestion = {
 } as const;
 
 describe("resolvePendingUserInputAnswer", () => {
+  it("requires the provider's minimum and maximum multi-select counts", () => {
+    const question = {
+      ...singleSelectQuestion,
+      options: [...singleSelectQuestion.options, { label: "third", description: "A third option" }],
+      multiSelect: true,
+      minItems: 2,
+      maxItems: 2,
+    };
+    const oneSelected = { selectedOptionValues: ["Orchestration-first"] };
+    const twoSelected = { selectedOptionValues: ["Orchestration-first", "Node.js"] };
+    const threeSelected = {
+      selectedOptionValues: ["Orchestration-first", "Node.js", "third"],
+    };
+
+    expect(resolvePendingUserInputAnswer(question, oneSelected)).toBeNull();
+    expect(buildPendingUserInputAnswers([question], { scope: oneSelected })).toBeNull();
+    expect(resolvePendingUserInputAnswer(question, twoSelected)).toEqual([
+      "Orchestration-first",
+      "Node.js",
+    ]);
+    expect(buildPendingUserInputAnswers([question], { scope: twoSelected })).toEqual({
+      scope: ["Orchestration-first", "Node.js"],
+    });
+    expect(resolvePendingUserInputAnswer(question, threeSelected)).toBeNull();
+  });
   it("preserves exact editor text, including a deliberately cleared answer", () => {
     const question = { ...singleSelectQuestion, initialAnswer: "  Proposed message\n" };
     expect(resolvePendingUserInputAnswer(question, { customAnswer: question.initialAnswer })).toBe(
@@ -107,6 +133,23 @@ describe("resolvePendingUserInputAnswer", () => {
 });
 
 describe("togglePendingUserInputOptionSelection", () => {
+  it("prevents selecting beyond the maximum while allowing a selection to be removed", () => {
+    const question = {
+      ...singleSelectQuestion,
+      options: [...singleSelectQuestion.options, { label: "third" }],
+      multiSelect: true,
+      maxItems: 2,
+    };
+    const first = togglePendingUserInputOptionSelection(question, undefined, "Orchestration-first");
+    const both = togglePendingUserInputOptionSelection(question, first, "Node.js");
+
+    expect(isPendingUserInputOptionDisabled(question, both, "third")).toBe(true);
+    expect(togglePendingUserInputOptionSelection(question, both, "third")).toBe(both);
+    expect(togglePendingUserInputOptionSelection(question, both, "Node.js")).toEqual({
+      customAnswer: "",
+      selectedOptionValues: ["Orchestration-first"],
+    });
+  });
   it("selects and removes options with the same label independently", () => {
     const question = { ...nativeChoiceQuestion, multiSelect: true };
     const firstSelected = togglePendingUserInputOptionSelection(question, undefined, " first\t");

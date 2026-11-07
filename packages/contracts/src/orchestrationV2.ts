@@ -1350,6 +1350,8 @@ export const OrchestrationV2UserInputQuestion = Schema.Struct({
     }),
   ),
   multiSelect: Schema.optional(Schema.Boolean),
+  minItems: Schema.optional(NonNegativeInt),
+  maxItems: Schema.optional(NonNegativeInt),
   allowCustomAnswer: Schema.optional(Schema.Boolean),
   initialAnswer: Schema.optional(Schema.String),
   required: Schema.optional(Schema.Boolean),
