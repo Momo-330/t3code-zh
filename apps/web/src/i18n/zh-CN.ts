@@ -3464,6 +3464,7 @@ export const zhCN: Readonly<Record<string, string>> = {
   "Couldn't search labels on the host": "无法在宿主上搜索标签",
   Count: "数量",
   Create: "创建",
+  Created: "创建于",
   "Create one in Settings → Sharing & access, or run": "在「设置 → 共享与访问」中创建，或运行",
   "Create task": "创建任务",
   Creating: "正在创建",
