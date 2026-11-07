@@ -25,6 +25,7 @@ import { useOpenPullRequest } from "../../native/useOpenPullRequest";
 import { useMarkdownPreviewStyles } from "../files/FileMarkdownPreview";
 import { useLiveThreadLinkLabels } from "../../state/entities";
 import {
+  isPendingUserInputOptionDisabled,
   isPendingUserInputOptionSelected,
   type PendingUserInputDraftAnswer,
 } from "@t3tools/client-runtime/state/pending-user-input";
@@ -245,14 +246,17 @@ export function PendingUserInputCard(props: PendingUserInputCardProps) {
                 {question.options.map((option) => {
                   const optionValue = option.value ?? option.label.trim();
                   const selected = isPendingUserInputOptionSelected(question, draft, optionValue);
+                  const optionDisabled =
+                    responseDisabled ||
+                    isPendingUserInputOptionDisabled(question, draft, optionValue);
                   const description =
                     option.description !== option.label ? option.description : undefined;
                   return (
                     <Pressable
                       key={optionValue}
                       accessibilityRole={question.multiSelect ? "checkbox" : "radio"}
-                      accessibilityState={{ checked: selected, disabled: responseDisabled }}
-                      disabled={responseDisabled}
+                      accessibilityState={{ checked: selected, disabled: optionDisabled }}
+                      disabled={optionDisabled}
                       className={cn(
                         "min-h-12 w-full rounded-2xl border px-3.5 py-3",
                         selected ? "border-primary bg-primary/10" : "border-border bg-input",

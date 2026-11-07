@@ -3,6 +3,8 @@ export interface PendingUserInputQuestion {
   readonly id: string;
   readonly options: ReadonlyArray<{ readonly label: string; readonly value?: string | undefined }>;
   readonly multiSelect?: boolean | undefined;
+  readonly minItems?: number | undefined;
+  readonly maxItems?: number | undefined;
   readonly allowCustomAnswer?: boolean | undefined;
   readonly initialAnswer?: string | undefined;
 }
@@ -74,6 +76,12 @@ export function resolvePendingUserInputAnswer(
 
   const selectedOptionValues = normalizeSelectedOptionValues(question, draft?.selectedOptionValues);
   if (question.multiSelect) {
+    if (
+      selectedOptionValues.length < (question.minItems ?? 0) ||
+      (question.maxItems !== undefined && selectedOptionValues.length > question.maxItems)
+    ) {
+      return null;
+    }
     return selectedOptionValues.length > 0
       ? selectedOptionValues
       : (customAnswer ??
@@ -123,6 +131,25 @@ export function isPendingUserInputOptionSelected(
   );
 }
 
+/** A multiple-choice option is unavailable once the question's selection limit is reached. */
+export function isPendingUserInputOptionDisabled(
+  question: PendingUserInputQuestion,
+  draft: PendingUserInputDraftAnswer | undefined,
+  optionValue: string,
+): boolean {
+  if (
+    !question.multiSelect ||
+    question.maxItems === undefined ||
+    normalizeDraftAnswer(draft?.customAnswer) !== null
+  ) {
+    return false;
+  }
+  const resolvedOptionValue = resolvePendingUserInputOptionValue(question, optionValue);
+  if (resolvedOptionValue === null) return false;
+  const selected = normalizeSelectedOptionValues(question, draft?.selectedOptionValues);
+  return selected.length >= question.maxItems && !selected.includes(resolvedOptionValue);
+}
+
 /** Toggles an offered option. An unknown option returns the same draft. */
 export function togglePendingUserInputOptionSelection(
   question: PendingUserInputQuestion,
@@ -139,6 +166,13 @@ export function togglePendingUserInputOptionSelection(
       question,
       draft?.selectedOptionValues,
     );
+    if (
+      !selectedOptionValues.includes(resolvedOptionValue) &&
+      question.maxItems !== undefined &&
+      selectedOptionValues.length >= question.maxItems
+    ) {
+      return draft ?? {};
+    }
     const nextSelectedOptionValues = selectedOptionValues.includes(resolvedOptionValue)
       ? selectedOptionValues.filter((value) => value !== resolvedOptionValue)
       : [...selectedOptionValues, resolvedOptionValue];
@@ -162,15 +196,15 @@ export function buildPendingUserInputAnswers(
   questions: ReadonlyArray<PendingUserInputQuestion>,
   draftAnswers: Record<string, PendingUserInputDraftAnswer>,
 ): Record<string, PendingUserInputAnswer> | null {
-  const answers: Record<string, PendingUserInputAnswer> = {};
+  const entries: Array<[string, PendingUserInputAnswer]> = [];
 
   for (const question of questions) {
     const answer = resolvePendingUserInputAnswer(question, draftAnswers[question.id]);
     if (answer === null) {
       return null;
     }
-    answers[question.id] = answer;
+    entries.push([question.id, answer]);
   }
 
-  return answers;
+  return Object.fromEntries(entries);
 }

@@ -4,7 +4,10 @@ import { memo, use, useEffect, useEffectEvent, useRef, useState } from "react";
 import { BackgroundThreadContext } from "./backgroundThread";
 import { useStableCallback } from "~/hooks/useStableCallback";
 import { type PendingUserInput } from "../../session-logic";
-import type { PendingUserInputDraftAnswer } from "@t3tools/client-runtime/state/pending-user-input";
+import {
+  isPendingUserInputOptionDisabled,
+  type PendingUserInputDraftAnswer,
+} from "@t3tools/client-runtime/state/pending-user-input";
 import { derivePendingUserInputProgress } from "../../pendingUserInput";
 import { CheckboxMark } from "../ui/checkbox";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
@@ -129,6 +132,12 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
 
   const handleOptionSelection = (questionId: string, optionValue: string) => {
     if (disabled || isResponding) return;
+    if (
+      activeQuestion?.id === questionId &&
+      isPendingUserInputOptionDisabled(activeQuestion, answers[questionId], optionValue)
+    ) {
+      return;
+    }
     if (activeQuestion?.multiSelect) {
       onToggleOption(questionId, optionValue);
       return;
@@ -169,12 +178,18 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
       if (optionIndex >= activeQuestion.options.length) return;
       const option = activeQuestion.options[optionIndex];
       if (!option) return;
+      const optionValue = option.value ?? option.label;
+      if (
+        isPendingUserInputOptionDisabled(activeQuestion, answers[activeQuestion.id], optionValue)
+      ) {
+        return;
+      }
       event.preventDefault();
-      selectOptionFromShortcut(activeQuestion.id, option.value ?? option.label);
+      selectOptionFromShortcut(activeQuestion.id, optionValue);
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [activeQuestion, backgroundThread, isCollapsed, responseDisabled]);
+  }, [activeQuestion, answers, backgroundThread, isCollapsed, responseDisabled]);
 
   if (!activeQuestion) {
     return null;
@@ -268,6 +283,14 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
             <div className="-ms-2 mt-1.5 sm:-ms-1.5">
               {activeQuestion.options.map((option, index) => {
                 const optionValue = option.value ?? option.label;
+                const optionDisabled =
+                  disabled ||
+                  isResponding ||
+                  isPendingUserInputOptionDisabled(
+                    activeQuestion,
+                    answers[activeQuestion.id],
+                    optionValue,
+                  );
                 const isOptimisticallySelected =
                   optimisticSingleSelect?.questionId === activeQuestion.id &&
                   optimisticSingleSelect.optionValue === optionValue;
@@ -277,8 +300,8 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
                   questionTextAlign,
                   "group flex w-full items-start gap-2.5 rounded-md bg-transparent py-1.5 ps-2 sm:ps-1.5 outline-none transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary/25",
                   isSelected ? "text-foreground" : "text-foreground/70 hover:bg-muted/30",
-                  (disabled || isResponding) && "opacity-50 cursor-not-allowed",
-                  !disabled && !isResponding && "cursor-pointer",
+                  optionDisabled && "opacity-50 cursor-not-allowed",
+                  !optionDisabled && "cursor-pointer",
                 );
                 // The h-5 slots match the label's line box, so the indicator and shortcut stay on its first line.
                 const content = (
@@ -315,7 +338,7 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
                     key={`${activeQuestion.id}:${optionValue}`}
                     type="button"
                     aria-pressed={isSelected}
-                    disabled={disabled || isResponding}
+                    disabled={optionDisabled}
                     onClick={() => {
                       handleOptionSelection(activeQuestion.id, optionValue);
                     }}
