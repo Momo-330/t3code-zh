@@ -132,6 +132,12 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
 
   const handleOptionSelection = (questionId: string, optionValue: string) => {
     if (disabled || isResponding) return;
+    if (
+      activeQuestion?.id === questionId &&
+      isPendingUserInputOptionDisabled(activeQuestion, answers[questionId], optionValue)
+    ) {
+      return;
+    }
     if (activeQuestion?.multiSelect) {
       onToggleOption(questionId, optionValue);
       return;
@@ -172,12 +178,18 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
       if (optionIndex >= activeQuestion.options.length) return;
       const option = activeQuestion.options[optionIndex];
       if (!option) return;
+      const optionValue = option.value ?? option.label;
+      if (
+        isPendingUserInputOptionDisabled(activeQuestion, answers[activeQuestion.id], optionValue)
+      ) {
+        return;
+      }
       event.preventDefault();
-      selectOptionFromShortcut(activeQuestion.id, option.value ?? option.label);
+      selectOptionFromShortcut(activeQuestion.id, optionValue);
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [activeQuestion, backgroundThread, isCollapsed, responseDisabled]);
+  }, [activeQuestion, answers, backgroundThread, isCollapsed, responseDisabled]);
 
   if (!activeQuestion) {
     return null;

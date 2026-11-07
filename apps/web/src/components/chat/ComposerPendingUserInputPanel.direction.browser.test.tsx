@@ -11,10 +11,17 @@ import { ComposerPendingUserInputPanel } from "./ComposerPendingUserInputPanel";
 type Question = {
   header: string;
   question: string;
-  options: { label: string; description: string }[];
+  options: { label: string; description: string; value?: string }[];
+  multiSelect?: boolean;
+  maxItems?: number;
 };
 
-const renderPanel = (questions: Question[], questionIndex = 0) =>
+const renderPanel = (
+  questions: Question[],
+  questionIndex = 0,
+  answers: Record<string, { selectedOptionValues: string[] }> = {},
+  onToggleOption = () => {},
+) =>
   render(
     <ComposerPendingUserInputPanel
       pendingUserInputs={[
@@ -26,16 +33,16 @@ const renderPanel = (questions: Question[], questionIndex = 0) =>
           questions: questions.map((question, index) => ({
             ...question,
             id: `question-${index}`,
-            multiSelect: false,
+            multiSelect: question.multiSelect ?? false,
           })),
         },
       ]}
       cwd={undefined}
       threadRef={{ environmentId: EnvironmentId.make("env"), threadId: ThreadId.make("thread") }}
       respondingRequestIds={[]}
-      answers={{}}
+      answers={answers}
       questionIndex={questionIndex}
-      onToggleOption={() => {}}
+      onToggleOption={onToggleOption}
       onAdvance={() => {}}
       onDismiss={() => {}}
     />,
@@ -97,4 +104,32 @@ it("keeps one direction for the whole set when a single question is Hebrew", asy
   await expect
     .element(screen.getByText("גרסה 3 (חדשה!)", { exact: true }))
     .toHaveStyle({ direction: "rtl" });
+});
+
+it("does not consume a digit shortcut for an option disabled by maxItems", async () => {
+  const onToggleOption = vi.fn();
+  await using screen = await renderPanel(
+    [
+      {
+        header: "Pick one",
+        question: "Choose one area",
+        multiSelect: true,
+        maxItems: 1,
+        options: [
+          { label: "Schemas", description: "Schemas", value: "schemas" },
+          { label: "UI", description: "UI", value: "ui" },
+        ],
+      },
+    ],
+    0,
+    { "question-0": { selectedOptionValues: ["schemas"] } },
+    onToggleOption,
+  );
+
+  await expect.element(screen.getByRole("button", { name: /UI/ })).toBeDisabled();
+  const event = new KeyboardEvent("keydown", { key: "2", cancelable: true });
+  document.dispatchEvent(event);
+
+  expect(event.defaultPrevented).toBe(false);
+  expect(onToggleOption).not.toHaveBeenCalled();
 });
