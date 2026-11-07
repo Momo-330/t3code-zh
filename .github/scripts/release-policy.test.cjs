@@ -1,4 +1,6 @@
 const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
+const { join } = require("node:path");
 const test = require("node:test");
 const { publishedRelease, releasePlan, releaseState } = require("./release-policy.cjs");
 
@@ -14,6 +16,16 @@ test("catches up a delayed release after its four-hour due time, outside the old
   const due = plan("2026-11-02T03:12:45Z");
   assert.equal(due.publish, true);
   assert.equal(due.reason, "due");
+});
+
+test("re-evaluates the release gate when source validation crosses the cooldown boundary", () => {
+  const beforeValidation = plan("2026-11-02T03:12:44Z");
+  assert.equal(beforeValidation.publish, false);
+  assert.equal(beforeValidation.reason, "cooldown");
+
+  const afterValidation = plan("2026-11-02T03:16:00Z");
+  assert.equal(afterValidation.publish, true);
+  assert.equal(afterValidation.reason, "due");
 });
 
 test("does not publish more often than four hours or rebuild an unchanged source", () => {
@@ -89,4 +101,27 @@ test("finds a published release beyond the first page of draft metadata", async 
     releasePlan({ ...state, source, now: Date.parse("2026-11-02T03:48:00Z") }).pending,
     false,
   );
+});
+
+test("the workflow computes release eligibility only after exact-source validation", () => {
+  const workflow = readFileSync(join(__dirname, "../workflows/sync-zh.yml"), "utf8");
+  const job = (name) => {
+    const start = workflow.indexOf(`\n  ${name}:\n`);
+    assert.notEqual(start, -1, `Missing ${name} job`);
+    const bodyStart = start + name.length + 4;
+    const body = workflow.slice(bodyStart);
+    const nextJob = body.search(/^ {2}\S/m);
+    return nextJob === -1 ? body : body.slice(0, nextJob);
+  };
+  const syncJob = job("sync");
+  const planJob = job("release-plan");
+  const releaseJob = job("release");
+
+  assert.doesNotMatch(syncJob, /zh-release-needed\.sh|Resolve the next version/);
+  assert.match(planJob, /^    needs: \[sync, validate\]$/m);
+  assert.match(planJob, /^    if: needs\.validate\.outputs\.validated == 'true'$/m);
+  assert.match(planJob, /run: bash scripts\/zh-release-needed\.sh/);
+  assert.match(releaseJob, /^    needs: \[sync, validate, release-plan\]$/m);
+  assert.match(releaseJob, /needs\.release-plan\.outputs\.publish == 'true'/);
+  assert.match(releaseJob, /version: \$\{\{ needs\.release-plan\.outputs\.version \}\}/);
 });
