@@ -521,7 +521,9 @@ break:
   `node_modules/` with the Linux node-pty binary, and must not carry a loose
   server bundle (`bin.mjs`).
 - The external Windows resource monitor is absent.
-- The unpacked Windows application contains more than 82 files.
+- The unpacked Windows application contains more than 87 files. This budget includes
+  the five additional prepared-bytecode files produced when the release build caches
+  the server entry and its loaded modules alongside the CLI.
 
 Cross-architecture Windows builds retain every structural and extracted-sidecar
 check, but skip executing the target Electron binary. A same-architecture build
