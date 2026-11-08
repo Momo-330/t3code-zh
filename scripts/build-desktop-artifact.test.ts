@@ -1299,6 +1299,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
   it.effect("enforces the Windows packaged payload file-count budget", () =>
     Effect.scoped(
       Effect.gen(function* () {
+        assert.equal(WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT, 87);
         const fs = yield* FileSystem.FileSystem;
         const path = yield* Path.Path;
         const fixture = yield* makeWindowsPayloadFixture({ copyUnpackedNatives: true });
