@@ -4,6 +4,8 @@ The conflict file list is provided below. Read the merge stages and surrounding 
 
 Only edit the listed conflicting paths. Resolve modify/delete conflicts according to whether the fork-specific behavior is still needed in the new upstream architecture. Do not blindly select an entire side. Do not change automation, repository policy, Git metadata, or non-conflicting files. Do not commit, push, create issues or pull requests, or access credentials. Do not remove, skip or weaken tests or assertions to obtain a passing result.
 
+Do not add trailing whitespace or blank lines at end of file. The independent `git diff --check` gate rejects either; inspect the conflict edits for these issues before finishing.
+
 Dependencies may not be installed. Do not perform network installations or request permission. A separate trusted CI job will validate the resulting tree. If a correct fix requires edits outside the permitted paths, explain the limitation and leave the conflict unresolved. Do not claim tests ran unless you actually ran them.
 
 Finish with a brief description of the resolution and any remaining uncertainty. The workflow independently rejects unresolved markers and changes outside the original conflict set; only a candidate that passes the full CI workflow can reach main.

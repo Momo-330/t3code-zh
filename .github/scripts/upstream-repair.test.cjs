@@ -126,6 +126,16 @@ test("rejects unresolved markers even when the agent says it is done", (t) => {
   assert.throws(() => exportResolution(f.repo, f.state));
 });
 
+test("reports the path and line when a resolution fails the whitespace gate", (t) => {
+  const f = fixture(t);
+  f.start();
+  f.write("app.txt", "resolved with trailing whitespace \n");
+  assert.throws(
+    () => exportResolution(f.repo, f.state),
+    /Repair whitespace check failed:\napp\.txt:1: trailing whitespace\./,
+  );
+});
+
 test("preserves an upstream deletion when it is the chosen conflict resolution", (t) => {
   const f = fixture(t);
   f.git(f.repo, "checkout", "upstream");

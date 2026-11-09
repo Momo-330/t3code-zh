@@ -15,6 +15,22 @@ function output(name, value) {
   if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `${name}=${value}\n`);
 }
 
+function check(cwd, args) {
+  const result = spawnSync("git", args, {
+    cwd,
+    encoding: "utf8",
+    maxBuffer: 8 * 1024 * 1024,
+  });
+  if (result.error) throw result.error;
+  if (result.status === 0) return;
+  const diagnostics = `${result.stdout ?? ""}\n${result.stderr ?? ""}`
+    .split(/\r?\n/)
+    .filter((line) => /:\d+: (?:trailing whitespace|new blank line at EOF)\.$/.test(line));
+  throw new Error(
+    `Repair whitespace check failed${diagnostics.length ? `:\n${diagnostics.join("\n")}` : "."}`,
+  );
+}
+
 function commit(cwd, ref) {
   const sha = git(cwd, ["rev-parse", "--verify", `${ref}^{commit}`]).trim();
   if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error("Invalid commit identity");
@@ -103,7 +119,7 @@ function exportResolution(cwd, directory) {
   }
   if (manifest.conflicts.some(protectedPath)) throw new Error("Protected repair path");
   git(cwd, ["add", "--all"]);
-  git(cwd, ["diff", "--cached", "--check", "--", ...manifest.conflicts]);
+  check(cwd, ["diff", "--cached", "--check", "--", ...manifest.conflicts]);
   const expected = new Map(manifest.entries.map((entry) => [entry.path, entry.value]));
   const actual = new Map(index(cwd).map((entry) => [entry.path, entry.value]));
   const allowed = new Set(manifest.conflicts);
